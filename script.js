@@ -11,7 +11,7 @@ class TagsManager {
         this.setupEventListeners();
         this.setupInitialState();
         this.renderTags();
-        this.parseInitialInput(); // Новая функция для парсинга начальной строки
+        this.parseInitialInput();
         this.updateLimitDisplay();
         this.updateAlternativeSection();
     }
@@ -110,6 +110,7 @@ class TagsManager {
     setupEventListeners() {
         const tagsInput = document.getElementById('tagsInput');
         const limitCheckbox = document.getElementById('limitCheckbox');
+        const removeDuplicatesCheckbox = document.getElementById('removeDuplicatesCheckbox');
 
         tagsInput.addEventListener('input', () => {
             this.parseInputString(tagsInput.value);
@@ -118,6 +119,10 @@ class TagsManager {
 
         limitCheckbox.addEventListener('change', () => {
             this.updateDisplay();
+        });
+
+        removeDuplicatesCheckbox.addEventListener('change', () => {
+            this.updateAlternativeSection();
         });
     }
 
@@ -334,6 +339,74 @@ class TagsManager {
         return alternativeTags.join(this.tagsData.alternativeSeparator);
     }
 
+    // Функция 2a: Создание альтернативной строки без дубликатов
+    createAlternativeStringWithoutDuplicates() {
+        const alternativeTags = [];
+        const seenAlternatives = new Set();
+        
+        // Проходим по категориям в порядке из JSON
+        this.tagsData.categories.forEach(categoryConfig => {
+            const categoryName = categoryConfig.name;
+            const categoryData = this.categories.get(categoryName);
+            
+            if (!categoryData) return;
+            
+            // Для каждой категории получаем альтернативные теги в правильном порядке
+            if (categoryData.type === 'ordered') {
+                // Для ordered категории - берем порядок из orderedTags
+                categoryData.orderedTags.forEach(tagName => {
+                    const tag = categoryData.tags.get(tagName);
+                    if (tag && tag.alternative) {
+                        // Нормализуем строку для корректного сравнения
+                        const normalizedAlternative = this.normalizeString(tag.alternative);
+                        if (!seenAlternatives.has(normalizedAlternative)) {
+                            alternativeTags.push(tag.alternative);
+                            seenAlternatives.add(normalizedAlternative);
+                        }
+                    }
+                });
+            } else if (categoryData.type === 'single') {
+                // Для single категории - берем первый выбранный тег
+                if (categoryData.selectedTags.size > 0) {
+                    const tagName = Array.from(categoryData.selectedTags)[0];
+                    const tag = categoryData.tags.get(tagName);
+                    if (tag && tag.alternative) {
+                        const normalizedAlternative = this.normalizeString(tag.alternative);
+                        if (!seenAlternatives.has(normalizedAlternative)) {
+                            alternativeTags.push(tag.alternative);
+                            seenAlternatives.add(normalizedAlternative);
+                        }
+                    }
+                }
+            } else {
+                // Для standard категории - берем теги в порядке из JSON
+                categoryConfig.tags.forEach(tagConfig => {
+                    if (categoryData.selectedTags.has(tagConfig.name)) {
+                        const tag = categoryData.tags.get(tagConfig.name);
+                        if (tag && tag.alternative) {
+                            const normalizedAlternative = this.normalizeString(tag.alternative);
+                            if (!seenAlternatives.has(normalizedAlternative)) {
+                                alternativeTags.push(tag.alternative);
+                                seenAlternatives.add(normalizedAlternative);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        return alternativeTags.join(this.tagsData.alternativeSeparator);
+    }
+
+    // Вспомогательная функция для нормализации строк
+    normalizeString(str) {
+        return str
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
+            .replace(/[^\w\s\[\]\/:\.\-]/g, ''); // Удаляем специальные символы, кроме тех что используются в URL и HTML
+    }
+
     // Функция 3: Парсинг входной строки
     parseInputString(inputString) {
         this.clearAllSelections();
@@ -470,8 +543,15 @@ class TagsManager {
     updateAlternativeSection() {
         const alternativeSection = document.getElementById('alternativeSection');
         const alternativeOutput = document.getElementById('alternativeOutput');
+        const removeDuplicatesCheckbox = document.getElementById('removeDuplicatesCheckbox');
         
-        const alternativeString = this.createAlternativeString();
+        let alternativeString;
+        
+        if (removeDuplicatesCheckbox.checked) {
+            alternativeString = this.createAlternativeStringWithoutDuplicates();
+        } else {
+            alternativeString = this.createAlternativeString();
+        }
         
         if (alternativeString) {
             alternativeSection.classList.remove('hidden');

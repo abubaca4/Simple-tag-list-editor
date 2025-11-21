@@ -47,6 +47,7 @@ body {
     align-items: center;
     gap: 5px;
     font-size: 14px;
+    cursor: pointer;
 }
 
 .limit-display {
@@ -62,6 +63,10 @@ body {
 
 .alternative-section {
     margin-bottom: 30px;
+}
+
+.alternative-controls {
+    margin-bottom: 10px;
 }
 
 .alternative-output {
