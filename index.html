@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор тегов</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="input-section">
+            <input type="text" id="tagsInput" class="tags-input" placeholder="Выберите теги...">
+        </div>
+        
+        <div class="limit-section">
+            <label class="checkbox-label">
+                <input type="checkbox" id="limitCheckbox" checked>
+                Ограничить длину:
+            </label>
+            <span id="limitDisplay" class="limit-display"></span>
+        </div>
+        
+        <div id="alternativeSection" class="alternative-section hidden">
+            <textarea id="alternativeOutput" class="alternative-output" readonly></textarea>
+        </div>
+        
+        <div id="tagsContainer" class="tags-container"></div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

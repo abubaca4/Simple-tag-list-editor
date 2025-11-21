@@ -1,0 +1,97 @@
+{
+  "separator": ", ",
+  "alternativeSeparator": " | ",
+  "characterLimit": 100,
+  "categories": [
+    {
+      "name": "Жанры",
+      "type": "standard",
+      "tags": [
+        {
+          "name": "экшен",
+          "alternative": "action",
+          "subgroup": "Основные",
+          "description": "Динамичные сцены и битвы"
+        },
+        {
+          "name": "романтика",
+          "alternative": "romance",
+          "subgroup": "Основные",
+          "description": "Истории о любви и отношениях"
+        },
+        {
+          "name": "комедия",
+          "alternative": "comedy",
+          "subgroup": "Основные",
+          "description": "Юмористический контент"
+        },
+        {
+          "name": "фэнтези",
+          "alternative": "fantasy",
+          "subgroup": "Фантастика",
+          "description": "Миры с магией и мифическими существами"
+        },
+        {
+          "name": "научная фантастика",
+          "alternative": "sci-fi",
+          "subgroup": "Фантастика",
+          "description": "Технологии будущего и космос"
+        }
+      ]
+    },
+    {
+      "name": "Платформы",
+      "type": "single",
+      "tags": [
+        {
+          "name": "ПК",
+          "alternative": "PC",
+          "subgroup": "",
+          "description": "Персональный компьютер"
+        },
+        {
+          "name": "PlayStation",
+          "alternative": "PS",
+          "subgroup": "",
+          "description": "Консоли Sony"
+        },
+        {
+          "name": "Xbox",
+          "alternative": "Xbox",
+          "subgroup": "",
+          "description": "Консоли Microsoft"
+        },
+        {
+          "name": "Nintendo Switch",
+          "alternative": "Switch",
+          "subgroup": "",
+          "description": "Гибридная консоль Nintendo"
+        }
+      ]
+    },
+    {
+      "name": "Рейтинги",
+      "type": "ordered",
+      "tags": [
+        {
+          "name": "высший приоритет",
+          "alternative": "top priority",
+          "subgroup": "",
+          "description": "Самые важные теги"
+        },
+        {
+          "name": "средний приоритет",
+          "alternative": "medium priority",
+          "subgroup": "",
+          "description": "Теги средней важности"
+        },
+        {
+          "name": "низкий приоритет",
+          "alternative": "low priority",
+          "subgroup": "",
+          "description": "Менее важные теги"
+        }
+      ]
+    }
+  ]
+}
