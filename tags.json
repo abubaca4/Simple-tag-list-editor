@@ -10,19 +10,19 @@
         {
           "name": "экшен",
           "alternative": "action",
-          "subgroup": "Основные",
+          "subgroup": "!Основные",
           "description": "Динамичные сцены и битвы"
         },
         {
           "name": "романтика",
           "alternative": "romance",
-          "subgroup": "Основные",
+          "subgroup": "!Основные",
           "description": "Истории о любви и отношениях"
         },
         {
           "name": "комедия",
           "alternative": "comedy",
-          "subgroup": "Основные",
+          "subgroup": "!Основные",
           "description": "Юмористический контент"
         },
         {

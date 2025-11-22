@@ -90,7 +90,7 @@ class TagsManager {
                 selectedTags: new Set(),
                 orderedTags: [],
                 variantGroups: new Map(),
-                selectedVariants: new Map() // Храним конкретный выбранный вариант для каждой группы
+                selectedVariants: new Map()
             };
 
             category.tags.forEach(tag => {
@@ -160,14 +160,20 @@ class TagsManager {
         const subgroups = this.groupTagsBySubgroup(categoryData);
 
         subgroups.forEach((tags, subgroupName) => {
+            // Проверяем, нужно ли отображать название подгруппы
+            const shouldShowSubgroupName = subgroupName && !subgroupName.startsWith('!');
+            const displaySubgroupName = subgroupName.startsWith('!') ? subgroupName.substring(1) : subgroupName;
+
             if (subgroupName) {
                 const subgroupDiv = document.createElement('div');
                 subgroupDiv.className = 'subgroup';
 
-                const subgroupTitle = document.createElement('div');
-                subgroupTitle.className = 'subgroup-title';
-                subgroupTitle.textContent = subgroupName;
-                subgroupDiv.appendChild(subgroupTitle);
+                if (shouldShowSubgroupName) {
+                    const subgroupTitle = document.createElement('div');
+                    subgroupTitle.className = 'subgroup-title';
+                    subgroupTitle.textContent = displaySubgroupName;
+                    subgroupDiv.appendChild(subgroupTitle);
+                }
 
                 const tagsGroup = this.createTagsGroup(tags, categoryName, categoryData);
                 subgroupDiv.appendChild(tagsGroup);
@@ -299,12 +305,10 @@ class TagsManager {
 
     handleSingleCategory(categoryData, mainName, clickedTagName) {
         if (categoryData.selectedTags.has(mainName)) {
-            // Снимаем выбор
             categoryData.selectedTags.delete(mainName);
             this.selectedTags.delete(mainName);
             categoryData.selectedVariants.delete(mainName);
         } else {
-            // Выбираем
             if (categoryData.selectedTags.size > 0) {
                 const previousTag = Array.from(categoryData.selectedTags)[0];
                 categoryData.selectedTags.delete(previousTag);
@@ -336,23 +340,19 @@ class TagsManager {
         const variantGroup = categoryData.variantGroups.get(mainName);
 
         if (variantGroup) {
-            // Это группа вариаций
             const isCurrentlySelected = categoryData.selectedTags.has(mainName);
             const currentVariant = categoryData.selectedVariants.get(mainName);
 
             if (isCurrentlySelected && currentVariant === clickedTagName) {
-                // Снимаем выбор, если кликнули на уже выбранный вариант
                 categoryData.selectedTags.delete(mainName);
                 this.selectedTags.delete(mainName);
                 categoryData.selectedVariants.delete(mainName);
             } else {
-                // Выбираем новый вариант
                 categoryData.selectedTags.add(mainName);
                 this.selectedTags.set(mainName, categoryData.name);
                 categoryData.selectedVariants.set(mainName, clickedTagName);
             }
         } else {
-            // Обычный тег без вариаций
             if (categoryData.selectedTags.has(mainName)) {
                 categoryData.selectedTags.delete(mainName);
                 this.selectedTags.delete(mainName);
@@ -364,7 +364,6 @@ class TagsManager {
         }
     }
 
-    // Функция 1: Создание результирующей строки
     createResultString() {
         const tags = [];
 
@@ -375,7 +374,6 @@ class TagsManager {
             if (!categoryData) return;
 
             if (categoryData.type === 'ordered') {
-                // Для ordered категории используем выбранные варианты
                 categoryData.orderedTags.forEach(mainName => {
                     const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
                     tags.push(selectedVariant);
@@ -404,7 +402,6 @@ class TagsManager {
         return tags.join(this.tagsData.separator);
     }
 
-    // Функция 2: Создание альтернативной строки
     createAlternativeString() {
         const alternativeTags = [];
 
@@ -444,7 +441,6 @@ class TagsManager {
         return alternativeTags.join(this.tagsData.alternativeSeparator);
     }
 
-    // Функция 2a: Создание альтернативной строки без дубликатов
     createAlternativeStringWithoutDuplicates() {
         const alternativeTags = [];
         const seenAlternatives = new Set();
@@ -505,7 +501,6 @@ class TagsManager {
             .replace(/[^\w\s\[\]\/:\.\-]/g, '');
     }
 
-    // Функция 3: Парсинг входной строки
     parseInputString(inputString) {
         this.clearAllSelections();
 
@@ -623,7 +618,6 @@ class TagsManager {
                 const isGroupSelected = categoryData.selectedTags.has(mainName);
                 const selectedVariant = categoryData.selectedVariants.get(mainName);
 
-                // Подсвечиваем кнопку только если она является выбранным вариантом в группе
                 const isThisVariantSelected = isGroupSelected && selectedVariant === tagName;
 
                 button.classList.toggle('selected', isThisVariantSelected);
