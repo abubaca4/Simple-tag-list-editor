@@ -90,7 +90,7 @@ class TagsManager {
                 selectedTags: new Set(),
                 orderedTags: [],
                 variantGroups: new Map(),
-                selectedVariants: new Map() // Храним выбранный вариант для каждой группы
+                selectedVariants: new Map() // Храним конкретный выбранный вариант для каждой группы
             };
 
             category.tags.forEach(tag => {
@@ -281,54 +281,54 @@ class TagsManager {
         return button;
     }
 
-    handleTagClick(categoryName, tagName, categoryType) {
+    handleTagClick(categoryName, clickedTagName, categoryType) {
         const categoryData = this.categories.get(categoryName);
-        const tag = categoryData.tags.get(tagName);
-        const mainName = tag ? tag.mainName : tagName;
+        const tag = categoryData.tags.get(clickedTagName);
+        const mainName = tag.mainName;
 
         if (categoryType === 'single') {
-            this.handleSingleCategory(categoryData, mainName);
+            this.handleSingleCategory(categoryData, mainName, clickedTagName);
         } else if (categoryType === 'ordered') {
-            this.handleOrderedCategory(categoryData, mainName);
+            this.handleOrderedCategory(categoryData, mainName, clickedTagName);
         } else {
-            this.handleStandardCategory(categoryData, tagName, mainName);
+            this.handleStandardCategory(categoryData, clickedTagName, mainName);
         }
 
         this.updateDisplay();
     }
 
-    handleSingleCategory(categoryData, tagName) {
-        if (categoryData.selectedTags.has(tagName)) {
-            categoryData.selectedTags.delete(tagName);
-            this.selectedTags.delete(tagName);
-            categoryData.selectedVariants.delete(tagName);
+    handleSingleCategory(categoryData, mainName, clickedTagName) {
+        if (categoryData.selectedTags.has(mainName)) {
+            // Снимаем выбор
+            categoryData.selectedTags.delete(mainName);
+            this.selectedTags.delete(mainName);
+            categoryData.selectedVariants.delete(mainName);
         } else {
+            // Выбираем
             if (categoryData.selectedTags.size > 0) {
                 const previousTag = Array.from(categoryData.selectedTags)[0];
                 categoryData.selectedTags.delete(previousTag);
                 this.selectedTags.delete(previousTag);
                 categoryData.selectedVariants.delete(previousTag);
             }
-            categoryData.selectedTags.add(tagName);
-            this.selectedTags.set(tagName, categoryData.name);
-            // Для single категории используем основной вариант
-            categoryData.selectedVariants.set(tagName, tagName);
+            categoryData.selectedTags.add(mainName);
+            this.selectedTags.set(mainName, categoryData.name);
+            categoryData.selectedVariants.set(mainName, clickedTagName);
         }
     }
 
-    handleOrderedCategory(categoryData, tagName) {
-        if (categoryData.selectedTags.has(tagName)) {
-            const index = categoryData.orderedTags.indexOf(tagName);
+    handleOrderedCategory(categoryData, mainName, clickedTagName) {
+        if (categoryData.selectedTags.has(mainName)) {
+            const index = categoryData.orderedTags.indexOf(mainName);
             categoryData.orderedTags.splice(index, 1);
-            categoryData.selectedTags.delete(tagName);
-            this.selectedTags.delete(tagName);
-            categoryData.selectedVariants.delete(tagName);
+            categoryData.selectedTags.delete(mainName);
+            this.selectedTags.delete(mainName);
+            categoryData.selectedVariants.delete(mainName);
         } else {
-            categoryData.orderedTags.push(tagName);
-            categoryData.selectedTags.add(tagName);
-            this.selectedTags.set(tagName, categoryData.name);
-            // Для ordered категории используем основной вариант
-            categoryData.selectedVariants.set(tagName, tagName);
+            categoryData.orderedTags.push(mainName);
+            categoryData.selectedTags.add(mainName);
+            this.selectedTags.set(mainName, categoryData.name);
+            categoryData.selectedVariants.set(mainName, clickedTagName);
         }
     }
 
@@ -346,7 +346,7 @@ class TagsManager {
                 this.selectedTags.delete(mainName);
                 categoryData.selectedVariants.delete(mainName);
             } else {
-                // Выбираем новый вариант или выбираем группу впервые
+                // Выбираем новый вариант
                 categoryData.selectedTags.add(mainName);
                 this.selectedTags.set(mainName, categoryData.name);
                 categoryData.selectedVariants.set(mainName, clickedTagName);
@@ -359,6 +359,7 @@ class TagsManager {
             } else {
                 categoryData.selectedTags.add(mainName);
                 this.selectedTags.set(mainName, categoryData.name);
+                categoryData.selectedVariants.set(mainName, clickedTagName);
             }
         }
     }
@@ -374,10 +375,16 @@ class TagsManager {
             if (!categoryData) return;
 
             if (categoryData.type === 'ordered') {
-                tags.push(...categoryData.orderedTags);
+                // Для ordered категории используем выбранные варианты
+                categoryData.orderedTags.forEach(mainName => {
+                    const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
+                    tags.push(selectedVariant);
+                });
             } else if (categoryData.type === 'single') {
                 if (categoryData.selectedTags.size > 0) {
-                    tags.push(Array.from(categoryData.selectedTags)[0]);
+                    const mainName = Array.from(categoryData.selectedTags)[0];
+                    const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
+                    tags.push(selectedVariant);
                 }
             } else {
                 const categoryTagsInOrder = [];
@@ -386,7 +393,6 @@ class TagsManager {
                     const mainName = names[0];
 
                     if (categoryData.selectedTags.has(mainName)) {
-                        // Для групп вариаций используем выбранный вариант, для обычных тегов - основное имя
                         const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
                         categoryTagsInOrder.push(selectedVariant);
                     }
@@ -409,16 +415,16 @@ class TagsManager {
             if (!categoryData) return;
 
             if (categoryData.type === 'ordered') {
-                categoryData.orderedTags.forEach(tagName => {
-                    const tag = categoryData.tags.get(tagName);
+                categoryData.orderedTags.forEach(mainName => {
+                    const tag = categoryData.tags.get(mainName);
                     if (tag && tag.alternative) {
                         alternativeTags.push(tag.alternative);
                     }
                 });
             } else if (categoryData.type === 'single') {
                 if (categoryData.selectedTags.size > 0) {
-                    const tagName = Array.from(categoryData.selectedTags)[0];
-                    const tag = categoryData.tags.get(tagName);
+                    const mainName = Array.from(categoryData.selectedTags)[0];
+                    const tag = categoryData.tags.get(mainName);
                     if (tag && tag.alternative) {
                         alternativeTags.push(tag.alternative);
                     }
@@ -450,8 +456,8 @@ class TagsManager {
             if (!categoryData) return;
 
             if (categoryData.type === 'ordered') {
-                categoryData.orderedTags.forEach(tagName => {
-                    const tag = categoryData.tags.get(tagName);
+                categoryData.orderedTags.forEach(mainName => {
+                    const tag = categoryData.tags.get(mainName);
                     if (tag && tag.alternative) {
                         const normalizedAlternative = this.normalizeString(tag.alternative);
                         if (!seenAlternatives.has(normalizedAlternative)) {
@@ -462,8 +468,8 @@ class TagsManager {
                 });
             } else if (categoryData.type === 'single') {
                 if (categoryData.selectedTags.size > 0) {
-                    const tagName = Array.from(categoryData.selectedTags)[0];
-                    const tag = categoryData.tags.get(tagName);
+                    const mainName = Array.from(categoryData.selectedTags)[0];
+                    const tag = categoryData.tags.get(mainName);
                     if (tag && tag.alternative) {
                         const normalizedAlternative = this.normalizeString(tag.alternative);
                         if (!seenAlternatives.has(normalizedAlternative)) {
@@ -618,11 +624,11 @@ class TagsManager {
                 const selectedVariant = categoryData.selectedVariants.get(mainName);
 
                 // Подсвечиваем кнопку только если она является выбранным вариантом в группе
-                const isSelected = isGroupSelected && selectedVariant === tagName;
+                const isThisVariantSelected = isGroupSelected && selectedVariant === tagName;
 
-                button.classList.toggle('selected', isSelected);
+                button.classList.toggle('selected', isThisVariantSelected);
 
-                if (categoryData.type === 'ordered' && isSelected) {
+                if (categoryData.type === 'ordered' && isThisVariantSelected) {
                     const orderIndex = categoryData.orderedTags.indexOf(mainName);
                     if (orderIndex !== -1) {
                         button.classList.add('ordered');
