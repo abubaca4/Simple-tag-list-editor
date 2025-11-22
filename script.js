@@ -9,27 +9,86 @@ class TagsManager {
 
     async initialize() {
         await this.loadTagsData();
-        this.setupEventListeners();
-        this.setupInitialState();
-        this.renderTags();
-        this.parseInitialInput();
-        this.updateLimitDisplay();
-        this.updateAlternativeSection();
+        if (this.tagsData) {
+            this.setupEventListeners();
+            this.setupInitialState();
+            this.renderTags();
+            this.parseInitialInput();
+            this.updateLimitDisplay();
+            this.updateAlternativeSection();
+        }
+    }
+
+    getConfigFileName() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const configName = urlParams.get('conf');
+
+        if (!configName) {
+            return 'tags.json';
+        }
+
+        return configName.endsWith('.json') ? configName : `${configName}.json`;
     }
 
     async loadTagsData() {
+        const configFile = this.getConfigFileName();
+
         try {
-            const response = await fetch('tags.json');
+            const response = await fetch(configFile);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             this.tagsData = await response.json();
             this.initializeCategories();
+            console.log(`✅ Загружена конфигурация: ${configFile}`);
         } catch (error) {
-            console.error('Ошибка загрузки tags.json:', error);
-            this.tagsData = this.getFallbackData();
-            this.initializeCategories();
+            console.error(`❌ Ошибка загрузки ${configFile}:`, error);
+
+            if (configFile !== 'tags.json') {
+                console.log('🔄 Пробуем загрузить tags.json как fallback...');
+                try {
+                    const fallbackResponse = await fetch('tags.json');
+                    if (fallbackResponse.ok) {
+                        this.tagsData = await fallbackResponse.json();
+                        this.initializeCategories();
+                        console.log('✅ Загружена fallback конфигурация: tags.json');
+                        return;
+                    }
+                } catch (fallbackError) {
+                    console.error('❌ Ошибка загрузки fallback файла:', fallbackError);
+                }
+            }
+
+            this.showErrorMessage(configFile);
         }
+    }
+
+    showErrorMessage(configFile) {
+        const container = document.getElementById('tagsContainer');
+        container.innerHTML = `
+            <div style="
+                background: var(--container-bg);
+                padding: 30px;
+                border-radius: 12px;
+                text-align: center;
+                border: 2px solid var(--limit-exceeded);
+                color: var(--text-color);
+                max-width: 600px;
+                margin: 50px auto;
+            ">
+                <h2 style="color: var(--limit-exceeded); margin-bottom: 15px;">Ошибка загрузки конфигурации</h2>
+                <p style="margin-bottom: 20px; line-height: 1.5;">
+                    Не удалось загрузить файл конфигурации: <strong>${configFile}</strong>
+                </p>
+                <p style="margin-bottom: 25px; opacity: 0.8;">
+                    Проверьте наличие файла и его корректность.
+                </p>
+                <div style="font-size: 14px; opacity: 0.7;">
+                    <p>По умолчанию используется: <code>tags.json</code></p>
+                    <p>Для выбора другого файла используйте параметр: <code>?conf=имя_файла</code></p>
+                </div>
+            </div>
+        `;
     }
 
     setupInitialState() {
@@ -48,34 +107,6 @@ class TagsManager {
         }
 
         this.updateDisplay();
-    }
-
-    getFallbackData() {
-        return {
-            "separator": ", ",
-            "alternativeSeparator": " | ",
-            "characterLimit": 100,
-            "categories": [
-                {
-                    "name": "Жанры",
-                    "type": "standard",
-                    "tags": [
-                        {
-                            "name": "экшен",
-                            "alternative": "action",
-                            "subgroup": "Основные",
-                            "description": "Динамичные сцены и битвы"
-                        },
-                        {
-                            "name": "романтика",
-                            "alternative": "romance",
-                            "subgroup": "Основные",
-                            "description": "Истории о любви и отношениях"
-                        }
-                    ]
-                }
-            ]
-        };
     }
 
     initializeCategories() {
@@ -160,7 +191,6 @@ class TagsManager {
         const subgroups = this.groupTagsBySubgroup(categoryData);
 
         subgroups.forEach((tags, subgroupName) => {
-            // Проверяем, нужно ли отображать название подгруппы
             const shouldShowSubgroupName = subgroupName && !subgroupName.startsWith('!');
             const displaySubgroupName = subgroupName.startsWith('!') ? subgroupName.substring(1) : subgroupName;
 
