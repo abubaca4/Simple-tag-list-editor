@@ -26,13 +26,21 @@
           "description": "Юмористический контент"
         },
         {
-          "name": "фэнтези",
+          "name": [
+            "фэнтези",
+            "fantasy",
+            "фантастика"
+          ],
           "alternative": "fantasy",
           "subgroup": "Фантастика",
           "description": "Миры с магией и мифическими существами"
         },
         {
-          "name": "научная фантастика",
+          "name": [
+            "научная фантастика",
+            "sci-fi",
+            "нф"
+          ],
           "alternative": "sci-fi",
           "subgroup": "Фантастика",
           "description": "Технологии будущего и космос"
@@ -50,13 +58,23 @@
           "description": "Персональный компьютер"
         },
         {
-          "name": "PlayStation",
+          "name": [
+            "PlayStation",
+            "PS",
+            "PS4",
+            "PS5"
+          ],
           "alternative": "PS",
           "subgroup": "",
           "description": "Консоли Sony"
         },
         {
-          "name": "Xbox",
+          "name": [
+            "Xbox",
+            "XBOX",
+            "Xbox One",
+            "Xbox Series"
+          ],
           "alternative": "Xbox",
           "subgroup": "",
           "description": "Консоли Microsoft"
@@ -80,7 +98,10 @@
           "description": "Самые важные теги"
         },
         {
-          "name": "средний приоритет",
+          "name": [
+            "средний приоритет",
+            "нормальный приоритет"
+          ],
           "alternative": "medium priority",
           "subgroup": "",
           "description": "Теги средней важности"
