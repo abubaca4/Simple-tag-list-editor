@@ -15,7 +15,7 @@
     --limit-color: #333;
     --limit-exceeded: #f44336;
     --variant-group-bg: #fafafa;
-    --shadow-color: rgba(0,0,0,0.1);
+    --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,7 +36,7 @@
         --limit-color: #e0e0e0;
         --limit-exceeded: #ff6b6b;
         --variant-group-bg: #3d3d3d;
-        --shadow-color: rgba(0,0,0,0.3);
+        --shadow-color: rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -52,12 +52,59 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    flex: 1;
+}
+
+/* GitHub лого */
+.github-link {
+    text-align: center;
+    padding: 30px 0 20px;
+    margin-top: auto;
+}
+
+.github-link a {
+    display: inline-block;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    text-decoration: none;
+}
+
+.github-link a:hover {
+    transform: scale(1.05);
+    opacity: 0.8;
+}
+
+.github-logo {
+    height: 32px;
+    width: auto;
+}
+
+/* Показываем светлое лого по умолчанию */
+.github-logo-light {
+    display: inline-block;
+}
+
+.github-logo-dark {
+    display: none;
+}
+
+/* В темной теме показываем белое лого и скрываем светлое */
+@media (prefers-color-scheme: dark) {
+    .github-logo-light {
+        display: none;
+    }
+
+    .github-logo-dark {
+        display: inline-block;
+    }
 }
 
 .input-section {
@@ -300,21 +347,21 @@ body {
     .tag-button.ordered::after {
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
-    
+
     .category {
         box-shadow: 0 4px 12px var(--shadow-color);
     }
-    
+
     .tag-button:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
-    
+
     .tags-input,
     .alternative-output {
         border: 2px solid var(--border-color);
     }
-    
+
     .tags-input:focus,
     .alternative-output:focus {
         border-color: var(--border-focus-color);
@@ -327,7 +374,7 @@ body {
     .subgroup-title {
         opacity: 0.8;
     }
-    
+
     .tag-description,
     .variant-description {
         opacity: 0.6;

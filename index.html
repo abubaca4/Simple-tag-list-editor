@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор тегов</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <div class="input-section">
             <input type="text" id="tagsInput" class="tags-input" placeholder="Выберите теги...">
         </div>
-        
+
         <div class="limit-section">
             <label class="checkbox-label">
                 <input type="checkbox" id="limitCheckbox" checked>
@@ -19,7 +21,7 @@
             </label>
             <span id="limitDisplay" class="limit-display"></span>
         </div>
-        
+
         <div id="alternativeSection" class="alternative-section hidden">
             <div class="alternative-controls">
                 <label class="checkbox-label">
@@ -29,10 +31,19 @@
             </div>
             <textarea id="alternativeOutput" class="alternative-output" readonly></textarea>
         </div>
-        
+
         <div id="tagsContainer" class="tags-container"></div>
     </div>
-    
+
+    <!-- GitHub лого -->
+    <div class="github-link">
+        <a href="https://github.com/abubaca4/Simple-tag-list-editor" target="_blank" rel="noopener noreferrer">
+            <img src="GitHub_Logo.png" alt="GitHub" class="github-logo github-logo-light">
+            <img src="GitHub_Logo_White.png" alt="GitHub" class="github-logo github-logo-dark">
+        </a>
+    </div>
+
     <script src="script.js"></script>
 </body>
+
 </html>
