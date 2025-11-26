@@ -1,19 +1,30 @@
-<!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор тегов</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
+    <!-- Индикаторы для пустых областей -->
+    <div id="leftScrollHint" class="scroll-hint scroll-hint-left">
+        <div class="scroll-hint-content">
+            <span class="scroll-arrow">↑</span>
+            <span class="scroll-text">Наверх</span>
+        </div>
+    </div>
+    <div id="rightScrollHint" class="scroll-hint scroll-hint-right">
+        <div class="scroll-hint-content">
+            <span class="scroll-text">Наверх</span>
+            <span class="scroll-arrow">↑</span>
+        </div>
+    </div>
+
     <div class="container">
         <div class="input-section">
             <input type="text" id="tagsInput" class="tags-input" placeholder="Выберите теги...">
         </div>
-
+        
         <div class="limit-section">
             <label class="checkbox-label">
                 <input type="checkbox" id="limitCheckbox" checked>
@@ -21,7 +32,7 @@
             </label>
             <span id="limitDisplay" class="limit-display"></span>
         </div>
-
+        
         <div id="alternativeSection" class="alternative-section hidden">
             <div class="alternative-controls">
                 <label class="checkbox-label">
@@ -31,11 +42,10 @@
             </div>
             <textarea id="alternativeOutput" class="alternative-output" readonly></textarea>
         </div>
-
+        
         <div id="tagsContainer" class="tags-container"></div>
     </div>
-
+    
     <script src="script.js"></script>
 </body>
-
 </html>

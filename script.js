@@ -16,18 +16,14 @@ class TagsManager {
             this.parseInitialInput();
             this.updateLimitDisplay();
             this.updateAlternativeSection();
+            this.setupScrollIndicators();
         }
     }
 
     getConfigFileName() {
         const urlParams = new URLSearchParams(window.location.search);
         const configName = urlParams.get('conf');
-
-        if (!configName) {
-            return 'tags.json';
-        }
-
-        return configName.endsWith('.json') ? configName : `${configName}.json`;
+        return configName && !configName.endsWith('.json') ? `${configName}.json` : (configName || 'tags.json');
     }
 
     async loadTagsData() {
@@ -35,9 +31,8 @@ class TagsManager {
 
         try {
             const response = await fetch(configFile);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
             this.tagsData = await response.json();
             this.initializeCategories();
             console.log(`✅ Загружена конфигурация: ${configFile}`);
@@ -45,7 +40,6 @@ class TagsManager {
             console.error(`❌ Ошибка загрузки ${configFile}:`, error);
 
             if (configFile !== 'tags.json') {
-                console.log('🔄 Пробуем загрузить tags.json как fallback...');
                 try {
                     const fallbackResponse = await fetch('tags.json');
                     if (fallbackResponse.ok) {
@@ -92,8 +86,7 @@ class TagsManager {
     }
 
     setupInitialState() {
-        const limitCheckbox = document.getElementById('limitCheckbox');
-        limitCheckbox.checked = true;
+        document.getElementById('limitCheckbox').checked = true;
     }
 
     parseInitialInput() {
@@ -171,19 +164,48 @@ class TagsManager {
             this.updateAlternativeSection();
         });
 
-        // Промотка в начало по клику на боковые поля
         document.body.addEventListener('click', (e) => {
             const container = document.querySelector('.container');
-            const isClickOnEmptySpace = !container.contains(e.target) &&
-                e.target !== container;
+            const isClickOnEmptySpace = !container.contains(e.target) && e.target !== container;
 
             if (isClickOnEmptySpace) {
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
+    }
+
+    setupScrollIndicators() {
+        const leftHint = document.getElementById('leftScrollHint');
+        const rightHint = document.getElementById('rightScrollHint');
+        const container = document.querySelector('.container');
+        
+        if (!container) return;
+        
+        const updateScrollIndicators = () => {
+            const scrollY = window.scrollY;
+            const viewportWidth = window.innerWidth;
+            const containerWidth = container.offsetWidth;
+            const hasEmptySpace = viewportWidth > containerWidth + 200;
+            
+            if (scrollY > 100 && hasEmptySpace) {
+                leftHint.classList.add('visible');
+                rightHint.classList.add('visible');
+            } else {
+                leftHint.classList.remove('visible');
+                rightHint.classList.remove('visible');
+            }
+        };
+        
+        const scrollToTop = () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        
+        leftHint.addEventListener('click', scrollToTop);
+        rightHint.addEventListener('click', scrollToTop);
+        
+        window.addEventListener('scroll', updateScrollIndicators);
+        window.addEventListener('resize', updateScrollIndicators);
+        updateScrollIndicators();
     }
 
     renderTags() {
@@ -208,7 +230,6 @@ class TagsManager {
         title.textContent = categoryName;
         titleContainer.appendChild(title);
 
-        // Добавляем кнопку с вопросительным знаком если есть описание
         if (categoryData.description) {
             const helpButton = document.createElement('button');
             helpButton.className = 'category-help-button';
@@ -225,7 +246,6 @@ class TagsManager {
 
         categoryDiv.appendChild(titleContainer);
 
-        // Добавляем предупреждение если требуется выбор тегов
         const warningElement = document.createElement('div');
         warningElement.className = 'category-warning hidden';
         categoryDiv.appendChild(warningElement);
@@ -268,10 +288,8 @@ class TagsManager {
             const tag = categoryData.tags.get(firstVariant);
             if (tag) {
                 const subgroup = tag.subgroup || '';
-                if (!subgroups.has(subgroup)) {
-                    subgroups.set(subgroup, []);
-                }
-
+                if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
+                
                 const variantGroup = {
                     type: 'variant',
                     mainName: mainName,
@@ -284,15 +302,11 @@ class TagsManager {
         });
 
         categoryData.tags.forEach(tag => {
-            if (tag.isVariant || processedMainNames.has(tag.mainName)) {
-                return;
-            }
+            if (tag.isVariant || processedMainNames.has(tag.mainName)) return;
 
             const subgroup = tag.subgroup || '';
-            if (!subgroups.has(subgroup)) {
-                subgroups.set(subgroup, []);
-            }
-
+            if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
+            
             subgroups.get(subgroup).push({
                 type: 'single',
                 tag: tag
@@ -348,13 +362,8 @@ class TagsManager {
         button.className = 'tag-button';
         button.textContent = tag.name;
 
-        if (tag.isMainTag) {
-            button.classList.add('main-tag');
-        }
-
-        if (tag.description) {
-            button.title = tag.description;
-        }
+        if (tag.isMainTag) button.classList.add('main-tag');
+        if (tag.description) button.title = tag.description;
 
         button.addEventListener('click', () => {
             this.handleTagClick(categoryName, tag.name, categoryData.type);
@@ -368,12 +377,15 @@ class TagsManager {
         const tag = categoryData.tags.get(clickedTagName);
         const mainName = tag.mainName;
 
-        if (categoryType === 'single') {
-            this.handleSingleCategory(categoryData, mainName, clickedTagName);
-        } else if (categoryType === 'ordered') {
-            this.handleOrderedCategory(categoryData, mainName, clickedTagName);
-        } else {
-            this.handleStandardCategory(categoryData, clickedTagName, mainName);
+        switch (categoryType) {
+            case 'single':
+                this.handleSingleCategory(categoryData, mainName, clickedTagName);
+                break;
+            case 'ordered':
+                this.handleOrderedCategory(categoryData, mainName, clickedTagName);
+                break;
+            default:
+                this.handleStandardCategory(categoryData, clickedTagName, mainName);
         }
 
         this.updateDisplay();
@@ -414,29 +426,17 @@ class TagsManager {
 
     handleStandardCategory(categoryData, clickedTagName, mainName) {
         const variantGroup = categoryData.variantGroups.get(mainName);
+        const isCurrentlySelected = categoryData.selectedTags.has(mainName);
+        const currentVariant = categoryData.selectedVariants.get(mainName);
 
-        if (variantGroup) {
-            const isCurrentlySelected = categoryData.selectedTags.has(mainName);
-            const currentVariant = categoryData.selectedVariants.get(mainName);
-
-            if (isCurrentlySelected && currentVariant === clickedTagName) {
-                categoryData.selectedTags.delete(mainName);
-                this.selectedTags.delete(mainName);
-                categoryData.selectedVariants.delete(mainName);
-            } else {
-                categoryData.selectedTags.add(mainName);
-                this.selectedTags.set(mainName, categoryData.name);
-                categoryData.selectedVariants.set(mainName, clickedTagName);
-            }
+        if (isCurrentlySelected && currentVariant === clickedTagName) {
+            categoryData.selectedTags.delete(mainName);
+            this.selectedTags.delete(mainName);
+            categoryData.selectedVariants.delete(mainName);
         } else {
-            if (categoryData.selectedTags.has(mainName)) {
-                categoryData.selectedTags.delete(mainName);
-                this.selectedTags.delete(mainName);
-            } else {
-                categoryData.selectedTags.add(mainName);
-                this.selectedTags.set(mainName, categoryData.name);
-                categoryData.selectedVariants.set(mainName, clickedTagName);
-            }
+            categoryData.selectedTags.add(mainName);
+            this.selectedTags.set(mainName, categoryData.name);
+            categoryData.selectedVariants.set(mainName, clickedTagName);
         }
     }
 
@@ -444,9 +444,7 @@ class TagsManager {
         const tags = [];
 
         this.tagsData.categories.forEach(categoryConfig => {
-            const categoryName = categoryConfig.name;
-            const categoryData = this.categories.get(categoryName);
-
+            const categoryData = this.categories.get(categoryConfig.name);
             if (!categoryData) return;
 
             if (categoryData.type === 'ordered') {
@@ -478,40 +476,26 @@ class TagsManager {
         return tags.join(this.tagsData.separator);
     }
 
-    createAlternativeString() {
-        const alternativeTags = [];
+    processCategoryTags(processCallback) {
+        const results = [];
 
         this.tagsData.categories.forEach(categoryConfig => {
-            const categoryName = categoryConfig.name;
-            const categoryData = this.categories.get(categoryName);
-
+            const categoryData = this.categories.get(categoryConfig.name);
             if (!categoryData) return;
 
-            if (categoryData.type === 'ordered') {
-                categoryData.orderedTags.forEach(mainName => {
-                    const tag = categoryData.tags.get(mainName);
-                    if (tag && tag.alternative) {
-                        alternativeTags.push(tag.alternative);
-                    }
-                });
-            } else if (categoryData.type === 'single') {
-                if (categoryData.selectedTags.size > 0) {
-                    const mainName = Array.from(categoryData.selectedTags)[0];
-                    const tag = categoryData.tags.get(mainName);
-                    if (tag && tag.alternative) {
-                        alternativeTags.push(tag.alternative);
-                    }
-                }
-            } else {
-                categoryConfig.tags.forEach(tagConfig => {
-                    const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
-                    const mainName = names[0];
+            processCallback(categoryConfig, categoryData, results);
+        });
 
-                    if (categoryData.selectedTags.has(mainName) && tagConfig.alternative) {
-                        alternativeTags.push(tagConfig.alternative);
-                    }
-                });
-            }
+        return results;
+    }
+
+    createAlternativeString() {
+        const alternativeTags = this.processCategoryTags((categoryConfig, categoryData, results) => {
+            this.processSelectedTags(categoryConfig, categoryData, (tag, mainName) => {
+                if (tag && tag.alternative) {
+                    results.push(tag.alternative);
+                }
+            });
         });
 
         return alternativeTags.join(this.tagsData.alternativeSeparator);
@@ -521,52 +505,43 @@ class TagsManager {
         const alternativeTags = [];
         const seenAlternatives = new Set();
 
-        this.tagsData.categories.forEach(categoryConfig => {
-            const categoryName = categoryConfig.name;
-            const categoryData = this.categories.get(categoryName);
-
-            if (!categoryData) return;
-
-            if (categoryData.type === 'ordered') {
-                categoryData.orderedTags.forEach(mainName => {
-                    const tag = categoryData.tags.get(mainName);
-                    if (tag && tag.alternative) {
-                        const normalizedAlternative = this.normalizeString(tag.alternative);
-                        if (!seenAlternatives.has(normalizedAlternative)) {
-                            alternativeTags.push(tag.alternative);
-                            seenAlternatives.add(normalizedAlternative);
-                        }
-                    }
-                });
-            } else if (categoryData.type === 'single') {
-                if (categoryData.selectedTags.size > 0) {
-                    const mainName = Array.from(categoryData.selectedTags)[0];
-                    const tag = categoryData.tags.get(mainName);
-                    if (tag && tag.alternative) {
-                        const normalizedAlternative = this.normalizeString(tag.alternative);
-                        if (!seenAlternatives.has(normalizedAlternative)) {
-                            alternativeTags.push(tag.alternative);
-                            seenAlternatives.add(normalizedAlternative);
-                        }
+        this.processCategoryTags((categoryConfig, categoryData) => {
+            this.processSelectedTags(categoryConfig, categoryData, (tag, mainName) => {
+                if (tag && tag.alternative) {
+                    const normalizedAlternative = this.normalizeString(tag.alternative);
+                    if (!seenAlternatives.has(normalizedAlternative)) {
+                        alternativeTags.push(tag.alternative);
+                        seenAlternatives.add(normalizedAlternative);
                     }
                 }
-            } else {
-                categoryConfig.tags.forEach(tagConfig => {
-                    const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
-                    const mainName = names[0];
-
-                    if (categoryData.selectedTags.has(mainName) && tagConfig.alternative) {
-                        const normalizedAlternative = this.normalizeString(tagConfig.alternative);
-                        if (!seenAlternatives.has(normalizedAlternative)) {
-                            alternativeTags.push(tagConfig.alternative);
-                            seenAlternatives.add(normalizedAlternative);
-                        }
-                    }
-                });
-            }
+            });
         });
 
         return alternativeTags.join(this.tagsData.alternativeSeparator);
+    }
+
+    processSelectedTags(categoryConfig, categoryData, callback) {
+        if (categoryData.type === 'ordered') {
+            categoryData.orderedTags.forEach(mainName => {
+                const tag = categoryData.tags.get(mainName);
+                callback(tag, mainName);
+            });
+        } else if (categoryData.type === 'single') {
+            if (categoryData.selectedTags.size > 0) {
+                const mainName = Array.from(categoryData.selectedTags)[0];
+                const tag = categoryData.tags.get(mainName);
+                callback(tag, mainName);
+            }
+        } else {
+            categoryConfig.tags.forEach(tagConfig => {
+                const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
+                const mainName = names[0];
+
+                if (categoryData.selectedTags.has(mainName) && tagConfig.alternative) {
+                    callback(tagConfig, mainName);
+                }
+            });
+        }
     }
 
     normalizeString(str) {
@@ -657,7 +632,6 @@ class TagsManager {
     updateInputField() {
         const input = document.getElementById('tagsInput');
         const resultString = this.createResultString();
-
         const limitCheckbox = document.getElementById('limitCheckbox');
         const isLimitEnabled = limitCheckbox.checked;
 
@@ -671,17 +645,7 @@ class TagsManager {
 
     updateTagsAppearance() {
         this.categories.forEach((categoryData, categoryName) => {
-            const categoryElements = document.querySelectorAll('.category');
-            let categoryElement = null;
-
-            for (const element of categoryElements) {
-                const titleElement = element.querySelector('.category-title');
-                if (titleElement && titleElement.textContent === categoryName) {
-                    categoryElement = element;
-                    break;
-                }
-            }
-
+            const categoryElement = this.findCategoryElement(categoryName);
             if (!categoryElement) return;
 
             const buttons = categoryElement.querySelectorAll('.tag-button');
@@ -694,7 +658,6 @@ class TagsManager {
                 const mainName = tag.mainName;
                 const isGroupSelected = categoryData.selectedTags.has(mainName);
                 const selectedVariant = categoryData.selectedVariants.get(mainName);
-
                 const isThisVariantSelected = isGroupSelected && selectedVariant === tagName;
 
                 button.classList.toggle('selected', isThisVariantSelected);
@@ -716,19 +679,20 @@ class TagsManager {
         });
     }
 
+    findCategoryElement(categoryName) {
+        const categoryElements = document.querySelectorAll('.category');
+        for (const element of categoryElements) {
+            const titleElement = element.querySelector('.category-title');
+            if (titleElement && titleElement.textContent === categoryName) {
+                return element;
+            }
+        }
+        return null;
+    }
+
     updateCategoryWarnings() {
         this.categories.forEach((categoryData, categoryName) => {
-            const categoryElements = document.querySelectorAll('.category');
-            let categoryElement = null;
-
-            for (const element of categoryElements) {
-                const titleElement = element.querySelector('.category-title');
-                if (titleElement && titleElement.textContent === categoryName) {
-                    categoryElement = element;
-                    break;
-                }
-            }
-
+            const categoryElement = this.findCategoryElement(categoryName);
             if (!categoryElement) return;
 
             const warningElement = categoryElement.querySelector('.category-warning');
@@ -745,7 +709,6 @@ class TagsManager {
                 requirementMet = categoryData.selectedTags.size > 0;
                 warningText = 'Необходимо выбрать хотя бы один тег';
             } else if (categoryData.requirement === 'atLeastOneMain') {
-                // Проверяем, есть ли выбранные главные теги
                 requirementMet = Array.from(categoryData.selectedTags).some(mainName => {
                     const tag = categoryData.tags.get(mainName);
                     return tag && tag.isMainTag;
@@ -767,13 +730,9 @@ class TagsManager {
         const alternativeOutput = document.getElementById('alternativeOutput');
         const removeDuplicatesCheckbox = document.getElementById('removeDuplicatesCheckbox');
 
-        let alternativeString;
-
-        if (removeDuplicatesCheckbox.checked) {
-            alternativeString = this.createAlternativeStringWithoutDuplicates();
-        } else {
-            alternativeString = this.createAlternativeString();
-        }
+        const alternativeString = removeDuplicatesCheckbox.checked 
+            ? this.createAlternativeStringWithoutDuplicates()
+            : this.createAlternativeString();
 
         if (alternativeString) {
             alternativeSection.classList.remove('hidden');
@@ -787,10 +746,10 @@ class TagsManager {
         const limitDisplay = document.getElementById('limitDisplay');
         const currentLength = this.createResultString().length;
         const limit = this.tagsData.characterLimit;
+        const limitCheckbox = document.getElementById('limitCheckbox');
 
         limitDisplay.textContent = `${currentLength}/${limit}`;
 
-        const limitCheckbox = document.getElementById('limitCheckbox');
         if (limitCheckbox.checked && currentLength > limit) {
             limitDisplay.classList.add('exceeded');
         } else {
