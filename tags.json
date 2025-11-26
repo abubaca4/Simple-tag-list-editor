@@ -6,18 +6,22 @@
     {
       "name": "Жанры",
       "type": "standard",
+      "requirement": "atLeastOneMain",
+      "description": "Выберите один или несколько жанров.\nГлавные жанры выделены желтым цветом.",
       "tags": [
         {
           "name": "экшен",
           "alternative": "action",
           "subgroup": "!Основные",
-          "description": "Динамичные сцены и битвы"
+          "description": "Динамичные сцены и битвы",
+          "main": true
         },
         {
           "name": "романтика",
           "alternative": "romance",
           "subgroup": "!Основные",
-          "description": "Истории о любви и отношениях"
+          "description": "Истории о любви и отношениях",
+          "main": true
         },
         {
           "name": "комедия",
@@ -33,7 +37,8 @@
           ],
           "alternative": "fantasy",
           "subgroup": "Фантастика",
-          "description": "Миры с магией и мифическими существами"
+          "description": "Миры с магией и мифическими существами",
+          "main": true
         },
         {
           "name": [
@@ -50,6 +55,8 @@
     {
       "name": "Платформы",
       "type": "single",
+      "requirement": "atLeastOne",
+      "description": "Выберите одну платформу для вашего контента",
       "tags": [
         {
           "name": "ПК",
@@ -66,7 +73,8 @@
           ],
           "alternative": "PS",
           "subgroup": "",
-          "description": "Консоли Sony"
+          "description": "Консоли Sony",
+          "main": true
         },
         {
           "name": [
@@ -90,12 +98,14 @@
     {
       "name": "Рейтинги",
       "type": "ordered",
+      "description": "Укажите приоритеты тегов в порядке важности",
       "tags": [
         {
           "name": "высший приоритет",
           "alternative": "top priority",
           "subgroup": "",
-          "description": "Самые важные теги"
+          "description": "Самые важные теги",
+          "main": true
         },
         {
           "name": [

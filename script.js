@@ -117,6 +117,8 @@ class TagsManager {
             const categoryData = {
                 name: category.name,
                 type: category.type,
+                requirement: category.requirement || 'none',
+                description: category.description || '',
                 tags: new Map(),
                 selectedTags: new Set(),
                 orderedTags: [],
@@ -135,7 +137,8 @@ class TagsManager {
                         alternative: tag.alternative || '',
                         subgroup: tag.subgroup || '',
                         description: tag.description || '',
-                        isVariant: name !== mainName
+                        isVariant: name !== mainName,
+                        isMainTag: tag.main || false
                     });
 
                     this.variantTags.set(name, mainName);
@@ -167,6 +170,20 @@ class TagsManager {
         removeDuplicatesCheckbox.addEventListener('change', () => {
             this.updateAlternativeSection();
         });
+
+        // Промотка в начало по клику на боковые поля
+        document.body.addEventListener('click', (e) => {
+            const container = document.querySelector('.container');
+            const isClickOnEmptySpace = !container.contains(e.target) &&
+                e.target !== container;
+
+            if (isClickOnEmptySpace) {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            }
+        });
     }
 
     renderTags() {
@@ -183,10 +200,35 @@ class TagsManager {
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'category';
 
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'category-title-container';
+
         const title = document.createElement('div');
         title.className = 'category-title';
         title.textContent = categoryName;
-        categoryDiv.appendChild(title);
+        titleContainer.appendChild(title);
+
+        // Добавляем кнопку с вопросительным знаком если есть описание
+        if (categoryData.description) {
+            const helpButton = document.createElement('button');
+            helpButton.className = 'category-help-button';
+            helpButton.innerHTML = '?';
+            helpButton.title = categoryData.description;
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'category-tooltip';
+            tooltip.textContent = categoryData.description;
+
+            helpButton.appendChild(tooltip);
+            titleContainer.appendChild(helpButton);
+        }
+
+        categoryDiv.appendChild(titleContainer);
+
+        // Добавляем предупреждение если требуется выбор тегов
+        const warningElement = document.createElement('div');
+        warningElement.className = 'category-warning hidden';
+        categoryDiv.appendChild(warningElement);
 
         const subgroups = this.groupTagsBySubgroup(categoryData);
 
@@ -305,6 +347,10 @@ class TagsManager {
         const button = document.createElement('button');
         button.className = 'tag-button';
         button.textContent = tag.name;
+
+        if (tag.isMainTag) {
+            button.classList.add('main-tag');
+        }
 
         if (tag.description) {
             button.title = tag.description;
@@ -605,6 +651,7 @@ class TagsManager {
         this.updateTagsAppearance();
         this.updateAlternativeSection();
         this.updateLimitDisplay();
+        this.updateCategoryWarnings();
     }
 
     updateInputField() {
@@ -666,6 +713,52 @@ class TagsManager {
                     button.removeAttribute('data-order');
                 }
             });
+        });
+    }
+
+    updateCategoryWarnings() {
+        this.categories.forEach((categoryData, categoryName) => {
+            const categoryElements = document.querySelectorAll('.category');
+            let categoryElement = null;
+
+            for (const element of categoryElements) {
+                const titleElement = element.querySelector('.category-title');
+                if (titleElement && titleElement.textContent === categoryName) {
+                    categoryElement = element;
+                    break;
+                }
+            }
+
+            if (!categoryElement) return;
+
+            const warningElement = categoryElement.querySelector('.category-warning');
+
+            if (categoryData.requirement === 'none') {
+                warningElement.classList.add('hidden');
+                return;
+            }
+
+            let requirementMet = false;
+            let warningText = '';
+
+            if (categoryData.requirement === 'atLeastOne') {
+                requirementMet = categoryData.selectedTags.size > 0;
+                warningText = 'Необходимо выбрать хотя бы один тег';
+            } else if (categoryData.requirement === 'atLeastOneMain') {
+                // Проверяем, есть ли выбранные главные теги
+                requirementMet = Array.from(categoryData.selectedTags).some(mainName => {
+                    const tag = categoryData.tags.get(mainName);
+                    return tag && tag.isMainTag;
+                });
+                warningText = 'Необходимо выбрать хотя бы один главный тег';
+            }
+
+            if (!requirementMet) {
+                warningElement.textContent = warningText;
+                warningElement.classList.remove('hidden');
+            } else {
+                warningElement.classList.add('hidden');
+            }
         });
     }
 
