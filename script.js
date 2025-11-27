@@ -4,20 +4,63 @@ class TagsManager {
         this.selectedTags = new Map();
         this.categories = new Map();
         this.variantTags = new Map();
+        
+        // Кэширование DOM элементов
+        this.domElements = {};
+        
+        // Массив всех тегов в порядке вывода
+        this.allTagsInOrder = [];
+        
         this.initialize();
     }
 
     async initialize() {
-        await this.loadTagsData();
-        if (this.tagsData) {
-            this.setupEventListeners();
-            this.setupInitialState();
-            this.renderTags();
-            this.parseInitialInput();
-            this.updateLimitDisplay();
-            this.updateAlternativeSection();
-            this.setupScrollIndicators();
+        try {
+            // Кэшируем DOM элементы
+            this.cacheDOMElements();
+            
+            await this.loadTagsData();
+            if (this.tagsData) {
+                this.showMainInterface();
+                this.setupEventListeners();
+                this.setupInitialState();
+                this.renderTags();
+                this.parseInitialInput();
+                this.updateLimitDisplay();
+                this.updateAlternativeSection();
+                this.setupScrollIndicators();
+            } else {
+                this.showErrorMessage('Неизвестная ошибка загрузки конфигурации');
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации:', error);
+            this.showErrorMessage(`Ошибка инициализации: ${error.message}`);
         }
+    }
+
+    cacheDOMElements() {
+        this.domElements = {
+            loadingMessage: document.getElementById('loadingMessage'),
+            errorMessage: document.getElementById('errorMessage'),
+            errorDetails: document.getElementById('errorDetails'),
+            mainContainer: document.getElementById('mainContainer'),
+            tagsInput: document.getElementById('tagsInput'),
+            limitCheckbox: document.getElementById('limitCheckbox'),
+            limitDisplay: document.getElementById('limitDisplay'),
+            alternativeSection: document.getElementById('alternativeSection'),
+            alternativeOutput: document.getElementById('alternativeOutput'),
+            removeDuplicatesCheckbox: document.getElementById('removeDuplicatesCheckbox'),
+            tagsContainer: document.getElementById('tagsContainer'),
+            leftScrollHint: document.getElementById('leftScrollHint'),
+            rightScrollHint: document.getElementById('rightScrollHint')
+        };
+    }
+
+    showMainInterface() {
+        console.log('✅ Показываем основной интерфейс');
+        this.domElements.loadingMessage.classList.add('util-hidden');
+        this.domElements.errorMessage.classList.add('util-hidden');
+        this.domElements.mainContainer.classList.remove('util-hidden');
     }
 
     getConfigFileName() {
@@ -31,67 +74,51 @@ class TagsManager {
 
         try {
             const response = await fetch(configFile);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
             this.tagsData = await response.json();
             this.initializeCategories();
             console.log(`✅ Загружена конфигурация: ${configFile}`);
+            return true;
         } catch (error) {
             console.error(`❌ Ошибка загрузки ${configFile}:`, error);
 
             if (configFile !== 'tags.json') {
                 try {
+                    console.log('🔄 Пробуем загрузить fallback конфигурацию...');
                     const fallbackResponse = await fetch('tags.json');
                     if (fallbackResponse.ok) {
                         this.tagsData = await fallbackResponse.json();
                         this.initializeCategories();
                         console.log('✅ Загружена fallback конфигурация: tags.json');
-                        return;
+                        return true;
                     }
                 } catch (fallbackError) {
                     console.error('❌ Ошибка загрузки fallback файла:', fallbackError);
                 }
             }
 
-            this.showErrorMessage(configFile);
+            this.showErrorMessage(`Не удалось загрузить файл конфигурации: ${configFile}`);
+            return false;
         }
     }
 
-    showErrorMessage(configFile) {
-        const container = document.getElementById('tagsContainer');
-        container.innerHTML = `
-            <div style="
-                background: var(--container-bg);
-                padding: 30px;
-                border-radius: 12px;
-                text-align: center;
-                border: 2px solid var(--limit-exceeded);
-                color: var(--text-color);
-                max-width: 600px;
-                margin: 50px auto;
-            ">
-                <h2 style="color: var(--limit-exceeded); margin-bottom: 15px;">Ошибка загрузки конфигурации</h2>
-                <p style="margin-bottom: 20px; line-height: 1.5;">
-                    Не удалось загрузить файл конфигурации: <strong>${configFile}</strong>
-                </p>
-                <p style="margin-bottom: 25px; opacity: 0.8;">
-                    Проверьте наличие файла и его корректность.
-                </p>
-                <div style="font-size: 14px; opacity: 0.7;">
-                    <p>По умолчанию используется: <code>tags.json</code></p>
-                    <p>Для выбора другого файла используйте параметр: <code>?conf=имя_файла</code></p>
-                </div>
-            </div>
-        `;
+    showErrorMessage(errorText) {
+        console.error('❌ Показываем ошибку:', errorText);
+        this.domElements.loadingMessage.classList.add('util-hidden');
+        this.domElements.errorDetails.textContent = errorText;
+        this.domElements.errorMessage.classList.remove('util-hidden');
+        this.domElements.mainContainer.classList.add('util-hidden');
     }
 
     setupInitialState() {
-        document.getElementById('limitCheckbox').checked = true;
+        this.domElements.limitCheckbox.checked = true;
     }
 
     parseInitialInput() {
-        const input = document.getElementById('tagsInput');
-        const initialValue = input.value.trim();
+        const initialValue = this.domElements.tagsInput.value.trim();
 
         if (initialValue) {
             this.parseInputString(initialValue);
@@ -105,6 +132,7 @@ class TagsManager {
     initializeCategories() {
         this.categories.clear();
         this.variantTags.clear();
+        this.allTagsInOrder = [];
 
         this.tagsData.categories.forEach(category => {
             const categoryData = {
@@ -116,7 +144,8 @@ class TagsManager {
                 selectedTags: new Set(),
                 orderedTags: [],
                 variantGroups: new Map(),
-                selectedVariants: new Map()
+                selectedVariants: new Map(),
+                domElement: null // Будет установлено при рендеринге
             };
 
             category.tags.forEach(tag => {
@@ -144,12 +173,38 @@ class TagsManager {
 
             this.categories.set(category.name, categoryData);
         });
+
+        // Создаем массив всех тегов в порядке вывода
+        this.buildAllTagsInOrder();
+    }
+
+    buildAllTagsInOrder() {
+        this.allTagsInOrder = [];
+        
+        this.tagsData.categories.forEach(categoryConfig => {
+            const categoryData = this.categories.get(categoryConfig.name);
+            
+            categoryConfig.tags.forEach(tagConfig => {
+                const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
+                const mainName = names[0];
+                
+                names.forEach(name => {
+                    this.allTagsInOrder.push({
+                        name: name,
+                        mainName: mainName,
+                        category: categoryConfig.name,
+                        categoryData: categoryData,
+                        tagConfig: tagConfig
+                    });
+                });
+            });
+        });
     }
 
     setupEventListeners() {
-        const tagsInput = document.getElementById('tagsInput');
-        const limitCheckbox = document.getElementById('limitCheckbox');
-        const removeDuplicatesCheckbox = document.getElementById('removeDuplicatesCheckbox');
+        const tagsInput = this.domElements.tagsInput;
+        const limitCheckbox = this.domElements.limitCheckbox;
+        const removeDuplicatesCheckbox = this.domElements.removeDuplicatesCheckbox;
 
         tagsInput.addEventListener('input', () => {
             this.parseInputString(tagsInput.value);
@@ -165,7 +220,7 @@ class TagsManager {
         });
 
         document.body.addEventListener('click', (e) => {
-            const container = document.querySelector('.container');
+            const container = this.domElements.mainContainer;
             const isClickOnEmptySpace = !container.contains(e.target) && e.target !== container;
 
             if (isClickOnEmptySpace) {
@@ -175,9 +230,9 @@ class TagsManager {
     }
 
     setupScrollIndicators() {
-        const leftHint = document.getElementById('leftScrollHint');
-        const rightHint = document.getElementById('rightScrollHint');
-        const container = document.querySelector('.container');
+        const leftHint = this.domElements.leftScrollHint;
+        const rightHint = this.domElements.rightScrollHint;
+        const container = this.domElements.mainContainer;
         
         if (!container) return;
         
@@ -209,12 +264,14 @@ class TagsManager {
     }
 
     renderTags() {
-        const container = document.getElementById('tagsContainer');
+        const container = this.domElements.tagsContainer;
         container.innerHTML = '';
 
         this.categories.forEach((categoryData, categoryName) => {
             const categoryElement = this.createCategoryElement(categoryName, categoryData);
             container.appendChild(categoryElement);
+            // Сохраняем ссылку на DOM элемент категории
+            categoryData.domElement = categoryElement;
         });
     }
 
@@ -247,7 +304,7 @@ class TagsManager {
         categoryDiv.appendChild(titleContainer);
 
         const warningElement = document.createElement('div');
-        warningElement.className = 'category-warning hidden';
+        warningElement.className = 'category-warning util-hidden';
         categoryDiv.appendChild(warningElement);
 
         const subgroups = this.groupTagsBySubgroup(categoryData);
@@ -359,7 +416,7 @@ class TagsManager {
 
     createTagButton(tag, categoryName, categoryData) {
         const button = document.createElement('button');
-        button.className = 'tag-button';
+        button.className = 'tag-button util-tag-base';
         button.textContent = tag.name;
 
         if (tag.isMainTag) button.classList.add('main-tag');
@@ -489,29 +546,21 @@ class TagsManager {
         return results;
     }
 
-    createAlternativeString() {
-        const alternativeTags = this.processCategoryTags((categoryConfig, categoryData, results) => {
-            this.processSelectedTags(categoryConfig, categoryData, (tag, mainName) => {
-                if (tag && tag.alternative) {
-                    results.push(tag.alternative);
-                }
-            });
-        });
-
-        return alternativeTags.join(this.tagsData.alternativeSeparator);
-    }
-
-    createAlternativeStringWithoutDuplicates() {
+    createAlternativeString(removeDuplicates = false) {
         const alternativeTags = [];
         const seenAlternatives = new Set();
 
         this.processCategoryTags((categoryConfig, categoryData) => {
             this.processSelectedTags(categoryConfig, categoryData, (tag, mainName) => {
                 if (tag && tag.alternative) {
-                    const normalizedAlternative = this.normalizeString(tag.alternative);
-                    if (!seenAlternatives.has(normalizedAlternative)) {
+                    if (removeDuplicates) {
+                        const normalizedAlternative = this.normalizeString(tag.alternative);
+                        if (!seenAlternatives.has(normalizedAlternative)) {
+                            alternativeTags.push(tag.alternative);
+                            seenAlternatives.add(normalizedAlternative);
+                        }
+                    } else {
                         alternativeTags.push(tag.alternative);
-                        seenAlternatives.add(normalizedAlternative);
                     }
                 }
             });
@@ -559,55 +608,56 @@ class TagsManager {
             .map(tag => tag.trim())
             .filter(tag => tag.length > 0);
 
-        let lastCategory = null;
+        if (tags.length === 0) return;
+
+        let lastFoundIndex = -1;
 
         tags.forEach(tag => {
-            let categoryFound = null;
-            let tagFound = null;
-            let mainName = null;
-
-            if (lastCategory) {
-                const category = this.categories.get(lastCategory);
-                if (category && category.tags.has(tag)) {
-                    categoryFound = lastCategory;
-                    tagFound = tag;
-                    mainName = category.tags.get(tag).mainName;
+            // Ищем тег в массиве allTagsInOrder, начиная с позиции после последнего найденного
+            let foundIndex = -1;
+            
+            // Поиск от lastFoundIndex + 1 до конца
+            for (let i = lastFoundIndex + 1; i < this.allTagsInOrder.length; i++) {
+                if (this.allTagsInOrder[i].name === tag) {
+                    foundIndex = i;
+                    break;
                 }
             }
-
-            if (!categoryFound) {
-                for (const [categoryName, category] of this.categories) {
-                    if (category.tags.has(tag)) {
-                        categoryFound = categoryName;
-                        tagFound = tag;
-                        mainName = category.tags.get(tag).mainName;
+            
+            // Если не нашли, ищем с начала до lastFoundIndex
+            if (foundIndex === -1) {
+                for (let i = 0; i <= lastFoundIndex; i++) {
+                    if (this.allTagsInOrder[i].name === tag) {
+                        foundIndex = i;
                         break;
                     }
                 }
             }
 
-            if (categoryFound && tagFound) {
-                const category = this.categories.get(categoryFound);
+            if (foundIndex !== -1) {
+                const tagInfo = this.allTagsInOrder[foundIndex];
+                const categoryData = tagInfo.categoryData;
+                const mainName = tagInfo.mainName;
 
-                if (category.type === 'single') {
-                    category.selectedTags.clear();
-                    category.selectedTags.add(mainName);
-                    this.selectedTags.set(mainName, categoryFound);
-                    category.selectedVariants.set(mainName, tagFound);
-                } else if (category.type === 'ordered') {
-                    if (!category.orderedTags.includes(mainName)) {
-                        category.orderedTags.push(mainName);
-                        category.selectedTags.add(mainName);
-                        this.selectedTags.set(mainName, categoryFound);
-                        category.selectedVariants.set(mainName, tagFound);
+                if (categoryData.type === 'single') {
+                    categoryData.selectedTags.clear();
+                    categoryData.selectedTags.add(mainName);
+                    this.selectedTags.set(mainName, tagInfo.category);
+                    categoryData.selectedVariants.set(mainName, tagInfo.name);
+                } else if (categoryData.type === 'ordered') {
+                    if (!categoryData.orderedTags.includes(mainName)) {
+                        categoryData.orderedTags.push(mainName);
+                        categoryData.selectedTags.add(mainName);
+                        this.selectedTags.set(mainName, tagInfo.category);
+                        categoryData.selectedVariants.set(mainName, tagInfo.name);
                     }
                 } else {
-                    category.selectedTags.add(mainName);
-                    this.selectedTags.set(mainName, categoryFound);
-                    category.selectedVariants.set(mainName, tagFound);
+                    categoryData.selectedTags.add(mainName);
+                    this.selectedTags.set(mainName, tagInfo.category);
+                    categoryData.selectedVariants.set(mainName, tagInfo.name);
                 }
 
-                lastCategory = categoryFound;
+                lastFoundIndex = foundIndex;
             }
         });
     }
@@ -630,25 +680,22 @@ class TagsManager {
     }
 
     updateInputField() {
-        const input = document.getElementById('tagsInput');
         const resultString = this.createResultString();
-        const limitCheckbox = document.getElementById('limitCheckbox');
-        const isLimitEnabled = limitCheckbox.checked;
+        const isLimitEnabled = this.domElements.limitCheckbox.checked;
 
         if (isLimitEnabled && resultString.length > this.tagsData.characterLimit) {
-            this.parseInputString(input.value);
+            this.parseInputString(this.domElements.tagsInput.value);
             this.updateTagsAppearance();
         } else {
-            input.value = resultString;
+            this.domElements.tagsInput.value = resultString;
         }
     }
 
     updateTagsAppearance() {
         this.categories.forEach((categoryData, categoryName) => {
-            const categoryElement = this.findCategoryElement(categoryName);
-            if (!categoryElement) return;
+            if (!categoryData.domElement) return;
 
-            const buttons = categoryElement.querySelectorAll('.tag-button');
+            const buttons = categoryData.domElement.querySelectorAll('.tag-button');
 
             buttons.forEach(button => {
                 const tagName = button.textContent;
@@ -679,26 +726,14 @@ class TagsManager {
         });
     }
 
-    findCategoryElement(categoryName) {
-        const categoryElements = document.querySelectorAll('.category');
-        for (const element of categoryElements) {
-            const titleElement = element.querySelector('.category-title');
-            if (titleElement && titleElement.textContent === categoryName) {
-                return element;
-            }
-        }
-        return null;
-    }
-
     updateCategoryWarnings() {
         this.categories.forEach((categoryData, categoryName) => {
-            const categoryElement = this.findCategoryElement(categoryName);
-            if (!categoryElement) return;
+            if (!categoryData.domElement) return;
 
-            const warningElement = categoryElement.querySelector('.category-warning');
+            const warningElement = categoryData.domElement.querySelector('.category-warning');
 
             if (categoryData.requirement === 'none') {
-                warningElement.classList.add('hidden');
+                warningElement.classList.add('util-hidden');
                 return;
             }
 
@@ -718,46 +753,39 @@ class TagsManager {
 
             if (!requirementMet) {
                 warningElement.textContent = warningText;
-                warningElement.classList.remove('hidden');
+                warningElement.classList.remove('util-hidden');
             } else {
-                warningElement.classList.add('hidden');
+                warningElement.classList.add('util-hidden');
             }
         });
     }
 
     updateAlternativeSection() {
-        const alternativeSection = document.getElementById('alternativeSection');
-        const alternativeOutput = document.getElementById('alternativeOutput');
-        const removeDuplicatesCheckbox = document.getElementById('removeDuplicatesCheckbox');
-
-        const alternativeString = removeDuplicatesCheckbox.checked 
-            ? this.createAlternativeStringWithoutDuplicates()
-            : this.createAlternativeString();
+        const alternativeString = this.createAlternativeString(this.domElements.removeDuplicatesCheckbox.checked);
 
         if (alternativeString) {
-            alternativeSection.classList.remove('hidden');
-            alternativeOutput.value = alternativeString;
+            this.domElements.alternativeSection.classList.remove('util-hidden');
+            this.domElements.alternativeOutput.value = alternativeString;
         } else {
-            alternativeSection.classList.add('hidden');
+            this.domElements.alternativeSection.classList.add('util-hidden');
         }
     }
 
     updateLimitDisplay() {
-        const limitDisplay = document.getElementById('limitDisplay');
         const currentLength = this.createResultString().length;
         const limit = this.tagsData.characterLimit;
-        const limitCheckbox = document.getElementById('limitCheckbox');
 
-        limitDisplay.textContent = `${currentLength}/${limit}`;
+        this.domElements.limitDisplay.textContent = `${currentLength}/${limit}`;
 
-        if (limitCheckbox.checked && currentLength > limit) {
-            limitDisplay.classList.add('exceeded');
+        if (this.domElements.limitCheckbox.checked && currentLength > limit) {
+            this.domElements.limitDisplay.classList.add('exceeded');
         } else {
-            limitDisplay.classList.remove('exceeded');
+            this.domElements.limitDisplay.classList.remove('exceeded');
         }
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM загружен, инициализируем TagsManager');
     new TagsManager();
 });

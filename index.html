@@ -1,9 +1,17 @@
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор тегов</title>
     <link rel="stylesheet" href="styles.css">
+    <noscript>
+        <style>
+            .loading-message { display: flex !important; }
+            .container { display: none !important; }
+            .error-message { display: none !important; }
+        </style>
+    </noscript>
 </head>
 <body>
     <!-- Индикаторы для пустых областей -->
@@ -20,9 +28,30 @@
         </div>
     </div>
 
-    <div class="container">
+    <!-- Сообщение о загрузке (по умолчанию видимо) -->
+    <div id="loadingMessage" class="loading-message util-fullscreen util-flex-center">
+        <div class="loading-content util-container-base">
+            <h2>Загрузка...</h2>
+            <p>Страница загружается. Без JavaScript приложение не функционирует.</p>
+        </div>
+    </div>
+
+    <!-- Сообщение об ошибке (по умолчанию скрыто) -->
+    <div id="errorMessage" class="error-message util-fullscreen util-flex-center util-hidden">
+        <div class="error-content util-container-base">
+            <h2>Ошибка загрузки конфигурации</h2>
+            <p id="errorDetails"></p>
+            <div class="error-help">
+                <p>По умолчанию используется: <code>tags.json</code></p>
+                <p>Для выбора другого файла используйте параметр: <code>?conf=имя_файла</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Функциональные элементы (по умолчанию скрыты) -->
+    <div class="container util-hidden" id="mainContainer">
         <div class="input-section">
-            <input type="text" id="tagsInput" class="tags-input" placeholder="Выберите теги...">
+            <input type="text" id="tagsInput" class="tags-input util-input-base" placeholder="Выберите теги...">
         </div>
         
         <div class="limit-section">
@@ -33,14 +62,14 @@
             <span id="limitDisplay" class="limit-display"></span>
         </div>
         
-        <div id="alternativeSection" class="alternative-section hidden">
+        <div id="alternativeSection" class="alternative-section util-hidden">
             <div class="alternative-controls">
                 <label class="checkbox-label">
                     <input type="checkbox" id="removeDuplicatesCheckbox">
                     Убрать дубликаты альтернативных тегов
                 </label>
             </div>
-            <textarea id="alternativeOutput" class="alternative-output" readonly></textarea>
+            <textarea id="alternativeOutput" class="alternative-output util-input-base" readonly></textarea>
         </div>
         
         <div id="tagsContainer" class="tags-container"></div>
