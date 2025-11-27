@@ -479,6 +479,9 @@ class TagsManager {
             this.selectedTags.set(mainName, categoryData.name);
             categoryData.selectedVariants.set(mainName, clickedTagName);
         }
+
+        // Вызываем сортировку после изменения состава тегов
+        this.sortOrderedCategory(categoryData);
     }
 
     handleStandardCategory(categoryData, clickedTagName, mainName) {
@@ -495,6 +498,26 @@ class TagsManager {
             this.selectedTags.set(mainName, categoryData.name);
             categoryData.selectedVariants.set(mainName, clickedTagName);
         }
+    }
+
+    sortOrderedCategory(categoryData) {
+        if (categoryData.type !== 'ordered') return;
+
+        const mainTags = [];
+        const nonMainTags = [];
+
+        // Разделяем теги на main и не main, сохраняя относительный порядок
+        categoryData.orderedTags.forEach(mainName => {
+            const tag = categoryData.tags.get(mainName);
+            if (tag && tag.isMainTag) {
+                mainTags.push(mainName);
+            } else {
+                nonMainTags.push(mainName);
+            }
+        });
+
+        // Объединяем: сначала main теги, потом остальные
+        categoryData.orderedTags = [...mainTags, ...nonMainTags];
     }
 
     createResultString() {
