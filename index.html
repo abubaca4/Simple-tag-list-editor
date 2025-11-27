@@ -24,7 +24,6 @@
 </head>
 
 <body>
-    <!-- Индикаторы для пустых областей -->
     <div id="leftScrollHint" class="scroll-hint scroll-hint-left">
         <div class="scroll-hint-content">
             <span class="scroll-arrow">↑</span>
@@ -38,7 +37,6 @@
         </div>
     </div>
 
-    <!-- Сообщение о загрузке (по умолчанию видимо) -->
     <div id="loadingMessage" class="loading-message util-fullscreen util-flex-center">
         <div class="loading-content util-container-base">
             <h2>Загрузка...</h2>
@@ -46,10 +44,9 @@
         </div>
     </div>
 
-    <!-- Сообщение об ошибке (по умолчанию скрыто) -->
     <div id="errorMessage" class="error-message util-fullscreen util-flex-center util-hidden">
         <div class="error-content util-container-base">
-            <h2>Ошибка загрузки конфигурации</h2>
+            <h2 id="errorTitle">Ошибка загрузки конфигурации</h2>
             <p id="errorDetails"></p>
             <div class="error-help">
                 <p>По умолчанию используется: <code>tags.json</code></p>
@@ -58,9 +55,7 @@
         </div>
     </div>
 
-    <!-- Новый общий контейнер для функциональных элементов -->
     <div id="appContainer" class="util-hidden">
-        <!-- header-panel теперь вне mainContainer -->
         <div class="header-panel">
             <div id="categoriesNav" class="categories-nav util-hidden">
                 <div class="categories-nav-header">
@@ -83,7 +78,6 @@
             </div>
         </div>
 
-        <!-- mainContainer без header-panel внутри -->
         <div class="container" id="mainContainer">
             <div id="alternativeSection" class="alternative-section util-hidden">
                 <div class="alternative-controls">

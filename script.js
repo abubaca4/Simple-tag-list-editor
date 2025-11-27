@@ -19,13 +19,14 @@ class TagsManager {
                 this.setupEvents();
                 this.render();
                 this.parseInput(this.dom.input.value);
-                this.updateState();
-            } else {
-                this.error('Неизвестная ошибка загрузки конфигурации');
+                this.updateUI(); // Заменено updateState() на updateUI()
             }
         } catch (e) {
             console.error(e);
-            this.error(`Ошибка: ${e.message}`);
+            // Если ошибка была выброшена из loadData, то error() будет вызвана там
+            // Если тут - значит, что-то пошло не так после загрузки.
+            if (!this.dom.error.classList.contains('util-hidden')) return; // Если уже показано сообщение об ошибке
+            this.error(`Критическая ошибка инициализации: ${e.message}`, 'Критическая ошибка');
         }
     }
 
@@ -35,6 +36,7 @@ class TagsManager {
             loading: id('loadingMessage'),
             error: id('errorMessage'),
             errDetail: id('errorDetails'),
+            errTitle: id('errorTitle'), // Добавлено для заголовка
             app: id('appContainer'),
             input: id('tagsInput'),
             limitBox: id('limitCheckbox'),
@@ -67,25 +69,52 @@ class TagsManager {
             return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
         };
         const file = getConf();
+
         const fetchFile = async (f) => {
             const r = await fetch(f);
-            if (!r.ok) throw new Error(r.status);
-            return await r.json();
+            if (!r.ok) {
+                // 404/403/500...
+                throw new Error(`Файл не найден или недоступен (статус: ${r.status})`);
+            }
+            try {
+                return await r.json();
+            } catch (jsonE) {
+                // Ошибка парсинга JSON
+                throw new Error(`Ошибка разбора JSON: ${jsonE.message}`);
+            }
         };
 
         try {
             this.tagsData = await fetchFile(file);
             return true;
         } catch (e) {
-            console.warn(`Error loading ${file}, trying fallback...`);
-            if (file !== 'tags.json') {
+            console.warn(`Error loading ${file}: ${e.message}`);
+            let errorText = e.message;
+            let errorTitle = `Ошибка загрузки ${file}`;
+
+            if (e.message.includes('не найден')) {
+                errorText = `Файл конфигурации **${file}** не найден или недоступен. Проверьте путь и имя файла.`;
+                errorTitle = 'Файл конфигурации не найден';
+            } else if (e.message.includes('разбора JSON')) {
+                errorText = `Файл конфигурации **${file}** содержит ошибку в формате JSON: ${e.message.split(':').slice(1).join(':').trim()}`;
+                errorTitle = 'Ошибка в формате JSON';
+            } else if (file !== 'tags.json') {
+                // Попытка загрузить tags.json в качестве запасного варианта, если исходный файл не загрузился
                 try {
                     this.tagsData = await fetchFile('tags.json');
                     return true;
-                } catch (e2) { }
+                } catch (e2) {
+                    console.error(`Fallback failed: ${e2.message}`);
+                    errorText += `\n\nНе удалось также загрузить файл по умолчанию \`tags.json\`.`;
+                    errorTitle = 'Ошибка загрузки конфигурации';
+                }
             }
-            this.error(`Не удалось загрузить ${file}`);
-            return false;
+
+            if (!this.tagsData) { // Если даже после фоллбэка нет данных
+                this.error(errorText, errorTitle);
+                return false;
+            }
+            return true;
         }
     }
 
@@ -434,13 +463,18 @@ class TagsManager {
 
         this.tagsData.categories.forEach(cfg => {
             const cat = this.categories.get(cfg.name);
-            const iter = (m) => add(cat.tags.get(m));
+            const iter = (m) => add(cat.tags.get(cat.selectedVariants.get(m) || m));
             if (cat.type === 'ordered') cat.orderedTags.forEach(iter);
             else if (cat.type === 'single') { if (cat.selectedTags.size) iter([...cat.selectedTags][0]); }
             else {
+                // Итерация через все теги в категории для сохранения порядка
                 cfg.tags.forEach(t => {
                     const m = Array.isArray(t.name) ? t.name[0] : t.name;
-                    if (cat.selectedTags.has(m) && t.alternative) add(t);
+                    if (cat.selectedTags.has(m)) {
+                        // Используем выбранный вариант для альтернативы, если есть
+                        const selectedName = cat.selectedVariants.get(m);
+                        add(cat.tags.get(selectedName || m));
+                    }
                 });
             }
         });
@@ -487,9 +521,18 @@ class TagsManager {
         this.dom.scrollHints.forEach(h => h.classList.toggle('visible', vis));
     }
 
-    updateState() { this.updateUI(); }
+    // Удален updateState()
+
     showUI() { this.dom.loading.classList.add('util-hidden'); this.dom.error.classList.add('util-hidden'); this.dom.app.classList.remove('util-hidden'); }
-    error(t) { this.dom.loading.classList.add('util-hidden'); this.dom.errDetail.textContent = t; this.dom.error.classList.remove('util-hidden'); this.dom.app.classList.add('util-hidden'); }
+
+    // Обновлен метод error для установки заголовка
+    error(detailText, title = 'Ошибка загрузки конфигурации') {
+        this.dom.loading.classList.add('util-hidden');
+        this.dom.errTitle.textContent = title; // Устанавливаем заголовок
+        this.dom.errDetail.innerHTML = detailText.replace(/\*\*(.*?)\*\*/g, '<code>$1</code>'); // Используем <code> для выделения файлов
+        this.dom.error.classList.remove('util-hidden');
+        this.dom.app.classList.add('util-hidden');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => new TagsManager());
