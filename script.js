@@ -4,13 +4,13 @@ class TagsManager {
         this.selectedTags = new Map();
         this.categories = new Map();
         this.variantTags = new Map();
-        
+
         // Кэширование DOM элементов
         this.domElements = {};
-        
+
         // Массив всех тегов в порядке вывода
         this.allTagsInOrder = [];
-        
+
         this.initialize();
     }
 
@@ -18,7 +18,7 @@ class TagsManager {
         try {
             // Кэшируем DOM элементы
             this.cacheDOMElements();
-            
+
             await this.loadTagsData();
             if (this.tagsData) {
                 this.showMainInterface();
@@ -77,7 +77,7 @@ class TagsManager {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             this.tagsData = await response.json();
             this.initializeCategories();
             console.log(`✅ Загружена конфигурация: ${configFile}`);
@@ -180,14 +180,14 @@ class TagsManager {
 
     buildAllTagsInOrder() {
         this.allTagsInOrder = [];
-        
+
         this.tagsData.categories.forEach(categoryConfig => {
             const categoryData = this.categories.get(categoryConfig.name);
-            
+
             categoryConfig.tags.forEach(tagConfig => {
                 const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
                 const mainName = names[0];
-                
+
                 names.forEach(name => {
                     this.allTagsInOrder.push({
                         name: name,
@@ -233,15 +233,15 @@ class TagsManager {
         const leftHint = this.domElements.leftScrollHint;
         const rightHint = this.domElements.rightScrollHint;
         const container = this.domElements.mainContainer;
-        
+
         if (!container) return;
-        
+
         const updateScrollIndicators = () => {
             const scrollY = window.scrollY;
             const viewportWidth = window.innerWidth;
             const containerWidth = container.offsetWidth;
             const hasEmptySpace = viewportWidth > containerWidth + 200;
-            
+
             if (scrollY > 100 && hasEmptySpace) {
                 leftHint.classList.add('visible');
                 rightHint.classList.add('visible');
@@ -250,14 +250,14 @@ class TagsManager {
                 rightHint.classList.remove('visible');
             }
         };
-        
+
         const scrollToTop = () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
-        
+
         leftHint.addEventListener('click', scrollToTop);
         rightHint.addEventListener('click', scrollToTop);
-        
+
         window.addEventListener('scroll', updateScrollIndicators);
         window.addEventListener('resize', updateScrollIndicators);
         updateScrollIndicators();
@@ -291,13 +291,8 @@ class TagsManager {
             const helpButton = document.createElement('button');
             helpButton.className = 'category-help-button';
             helpButton.innerHTML = '?';
-            helpButton.title = categoryData.description;
-
-            const tooltip = document.createElement('div');
-            tooltip.className = 'category-tooltip';
-            tooltip.textContent = categoryData.description;
-
-            helpButton.appendChild(tooltip);
+            helpButton.setAttribute('data-tooltip', categoryData.description);
+            // Убрал создание tooltip элемента
             titleContainer.appendChild(helpButton);
         }
 
@@ -346,7 +341,7 @@ class TagsManager {
             if (tag) {
                 const subgroup = tag.subgroup || '';
                 if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
-                
+
                 const variantGroup = {
                     type: 'variant',
                     mainName: mainName,
@@ -363,7 +358,7 @@ class TagsManager {
 
             const subgroup = tag.subgroup || '';
             if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
-            
+
             subgroups.get(subgroup).push({
                 type: 'single',
                 tag: tag
@@ -418,9 +413,10 @@ class TagsManager {
         const button = document.createElement('button');
         button.className = 'tag-button util-tag-base';
         button.textContent = tag.name;
+        button.setAttribute('data-tooltip', tag.description || '');
 
         if (tag.isMainTag) button.classList.add('main-tag');
-        if (tag.description) button.title = tag.description;
+        // Убрал: if (tag.description) button.title = tag.description;
 
         button.addEventListener('click', () => {
             this.handleTagClick(categoryName, tag.name, categoryData.type);
@@ -638,7 +634,7 @@ class TagsManager {
         tags.forEach(tag => {
             // Ищем тег в массиве allTagsInOrder, начиная с позиции после последнего найденного
             let foundIndex = -1;
-            
+
             // Поиск от lastFoundIndex + 1 до конца
             for (let i = lastFoundIndex + 1; i < this.allTagsInOrder.length; i++) {
                 if (this.allTagsInOrder[i].name === tag) {
@@ -646,7 +642,7 @@ class TagsManager {
                     break;
                 }
             }
-            
+
             // Если не нашли, ищем с начала до lastFoundIndex
             if (foundIndex === -1) {
                 for (let i = 0; i <= lastFoundIndex; i++) {
@@ -765,13 +761,13 @@ class TagsManager {
 
             if (categoryData.requirement === 'atLeastOne') {
                 requirementMet = categoryData.selectedTags.size > 0;
-                warningText = 'Необходимо выбрать хотя бы один тег';
+                warningText = 'Необходимо выбрать главный жанр первым';
             } else if (categoryData.requirement === 'atLeastOneMain') {
                 requirementMet = Array.from(categoryData.selectedTags).some(mainName => {
                     const tag = categoryData.tags.get(mainName);
                     return tag && tag.isMainTag;
                 });
-                warningText = 'Необходимо выбрать хотя бы один главный тег';
+                warningText = 'Необходимо выбрать главный жанр первым';
             }
 
             if (!requirementMet) {
