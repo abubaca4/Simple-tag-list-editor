@@ -3,894 +3,493 @@ class TagsManager {
         this.tagsData = null;
         this.selectedTags = new Map();
         this.categories = new Map();
-        this.variantTags = new Map();
-
-        // Кэширование DOM элементов
-        this.domElements = {};
-
-        // Массив всех тегов в порядке вывода
         this.allTagsInOrder = [];
-
+        this.tagIndexMap = new Map(); // Оптимизация поиска
+        this.isHeaderPinned = true;
+        this.dom = {}; // Кэш DOM
         this.initialize();
     }
 
     async initialize() {
         try {
-            // Кэшируем DOM элементы
-            this.cacheDOMElements();
-
-            await this.loadTagsData();
-            if (this.tagsData) {
-                this.showMainInterface();
-                this.setupEventListeners();
-                this.setupInitialState();
-                this.renderTags();
-                this.parseInitialInput();
-                this.updateLimitDisplay();
-                this.updateAlternativeSection();
-                this.setupScrollIndicators();
-                this.setupCategoriesNavigation(); // Добавляем инициализацию навигации
+            this.cacheDOM();
+            if (await this.loadData()) {
+                this.showUI();
+                this.initCategories();
+                this.setupEvents();
+                this.render();
+                this.parseInput(this.dom.input.value);
+                this.updateState();
             } else {
-                this.showErrorMessage('Неизвестная ошибка загрузки конфигурации');
+                this.error('Неизвестная ошибка загрузки конфигурации');
             }
-        } catch (error) {
-            console.error('Ошибка инициализации:', error);
-            this.showErrorMessage(`Ошибка инициализации: ${error.message}`);
+        } catch (e) {
+            console.error(e);
+            this.error(`Ошибка: ${e.message}`);
         }
     }
 
-    cacheDOMElements() {
-        this.domElements = {
-            loadingMessage: document.getElementById('loadingMessage'),
-            errorMessage: document.getElementById('errorMessage'),
-            errorDetails: document.getElementById('errorDetails'),
-            mainContainer: document.getElementById('mainContainer'),
-            tagsInput: document.getElementById('tagsInput'),
-            limitCheckbox: document.getElementById('limitCheckbox'),
-            limitDisplay: document.getElementById('limitDisplay'),
-            alternativeSection: document.getElementById('alternativeSection'),
-            alternativeOutput: document.getElementById('alternativeOutput'),
-            removeDuplicatesCheckbox: document.getElementById('removeDuplicatesCheckbox'),
-            tagsContainer: document.getElementById('tagsContainer'),
-            leftScrollHint: document.getElementById('leftScrollHint'),
-            rightScrollHint: document.getElementById('rightScrollHint'),
-            categoriesNav: document.getElementById('categoriesNav'), // Добавляем навигацию
-            categoriesNavList: document.getElementById('categoriesNavList') // Добавляем список навигации
+    cacheDOM() {
+        const id = x => document.getElementById(x);
+        this.dom = {
+            loading: id('loadingMessage'),
+            error: id('errorMessage'),
+            errDetail: id('errorDetails'),
+            app: id('appContainer'),
+            input: id('tagsInput'),
+            limitBox: id('limitCheckbox'),
+            limitDisp: id('limitDisplay'),
+            altSection: id('alternativeSection'),
+            altOut: id('alternativeOutput'),
+            dupBox: id('removeDuplicatesCheckbox'),
+            container: id('tagsContainer'),
+            nav: id('categoriesNav'),
+            navList: id('categoriesNavList'),
+            pinBtn: id('pinHeaderButton'),
+            header: document.querySelector('.header-panel'),
+            main: id('mainContainer'),
+            scrollHints: [id('leftScrollHint'), id('rightScrollHint')]
         };
     }
 
-    showMainInterface() {
-        console.log('✅ Показываем основной интерфейс');
-        this.domElements.loadingMessage.classList.add('util-hidden');
-        this.domElements.errorMessage.classList.add('util-hidden');
-        this.domElements.mainContainer.classList.remove('util-hidden');
+    // Хелпер создания элементов
+    el(tag, cls = '', text = '', attrs = {}) {
+        const d = document.createElement(tag);
+        if (cls) d.className = cls;
+        if (text) d.textContent = text;
+        Object.entries(attrs).forEach(([k, v]) => d.setAttribute(k, v));
+        return d;
     }
 
-    getConfigFileName() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const configName = urlParams.get('conf');
-        return configName && !configName.endsWith('.json') ? `${configName}.json` : (configName || 'tags.json');
-    }
-
-    async loadTagsData() {
-        const configFile = this.getConfigFileName();
+    async loadData() {
+        const getConf = () => {
+            const p = new URLSearchParams(window.location.search).get('conf');
+            return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
+        };
+        const file = getConf();
+        const fetchFile = async (f) => {
+            const r = await fetch(f);
+            if (!r.ok) throw new Error(r.status);
+            return await r.json();
+        };
 
         try {
-            const response = await fetch(configFile);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            this.tagsData = await response.json();
-            this.initializeCategories();
-            console.log(`✅ Загружена конфигурация: ${configFile}`);
+            this.tagsData = await fetchFile(file);
             return true;
-        } catch (error) {
-            console.error(`❌ Ошибка загрузки ${configFile}:`, error);
-
-            if (configFile !== 'tags.json') {
+        } catch (e) {
+            console.warn(`Error loading ${file}, trying fallback...`);
+            if (file !== 'tags.json') {
                 try {
-                    console.log('🔄 Пробуем загрузить fallback конфигурацию...');
-                    const fallbackResponse = await fetch('tags.json');
-                    if (fallbackResponse.ok) {
-                        this.tagsData = await fallbackResponse.json();
-                        this.initializeCategories();
-                        console.log('✅ Загружена fallback конфигурация: tags.json');
-                        return true;
-                    }
-                } catch (fallbackError) {
-                    console.error('❌ Ошибка загрузки fallback файла:', fallbackError);
-                }
+                    this.tagsData = await fetchFile('tags.json');
+                    return true;
+                } catch (e2) { }
             }
-
-            this.showErrorMessage(`Не удалось загрузить файл конфигурации: ${configFile}`);
+            this.error(`Не удалось загрузить ${file}`);
             return false;
         }
     }
 
-    setupCategoriesNavigation() {
-        this.updateCategoriesNavigation();
-
-        // Обновляем видимость навигации при изменении размера окна и прокрутке
-        window.addEventListener('resize', () => {
-            this.updateCategoriesNavigationVisibility();
-        });
-
-        window.addEventListener('scroll', () => {
-            this.updateCategoriesNavigationVisibility();
-        });
-
-        // Инициализируем видимость
-        this.updateCategoriesNavigationVisibility();
-    }
-
-    // Создаем навигацию по категориям
-    updateCategoriesNavigation() {
-        const navList = this.domElements.categoriesNavList;
-        navList.innerHTML = '';
-
-        this.categories.forEach((categoryData, categoryName) => {
-            const navItem = document.createElement('button');
-            navItem.className = 'category-nav-item';
-            navItem.textContent = categoryName;
-            navItem.setAttribute('data-category', categoryName);
-
-            navItem.addEventListener('click', () => {
-                this.scrollToCategory(categoryName);
-            });
-
-            navList.appendChild(navItem);
-        });
-    }
-
-    // Прокрутка к категории
-    scrollToCategory(categoryName) {
-        const categoryData = this.categories.get(categoryName);
-        if (categoryData && categoryData.domElement) {
-            const element = categoryData.domElement;
-            const offsetTop = element.offsetTop - 20; // Небольшой отступ сверху
-
-            window.scrollTo({
-                top: offsetTop,
-                behavior: 'smooth'
-            });
-        }
-    }
-
-    // Обновляем видимость навигации по категориям
-    updateCategoriesNavigationVisibility() {
-        const nav = this.domElements.categoriesNav;
-        const container = this.domElements.mainContainer;
-
-        if (!container) return;
-
-        const containerHeight = container.scrollHeight;
-        const viewportHeight = window.innerHeight;
-        const hasScroll = containerHeight > viewportHeight;
-
-        if (hasScroll) {
-            nav.classList.remove('util-hidden');
-        } else {
-            nav.classList.add('util-hidden');
-        }
-    }
-
-    showErrorMessage(errorText) {
-        console.error('❌ Показываем ошибку:', errorText);
-        this.domElements.loadingMessage.classList.add('util-hidden');
-        this.domElements.errorDetails.textContent = errorText;
-        this.domElements.errorMessage.classList.remove('util-hidden');
-        this.domElements.mainContainer.classList.add('util-hidden');
-    }
-
-    setupInitialState() {
-        this.domElements.limitCheckbox.checked = true;
-    }
-
-    parseInitialInput() {
-        const initialValue = this.domElements.tagsInput.value.trim();
-
-        if (initialValue) {
-            this.parseInputString(initialValue);
-        } else {
-            this.clearAllSelections();
-        }
-
-        this.updateDisplay();
-    }
-
-    initializeCategories() {
+    initCategories() {
         this.categories.clear();
-        this.variantTags.clear();
         this.allTagsInOrder = [];
+        this.tagIndexMap.clear();
 
-        this.tagsData.categories.forEach(category => {
-            const categoryData = {
-                name: category.name,
-                type: category.type,
-                requirement: category.requirement || 'none',
-                description: category.description || '',
+        this.tagsData.categories.forEach(cat => {
+            const catData = {
+                ...cat,
+                requirement: cat.requirement || 'none',
                 tags: new Map(),
                 selectedTags: new Set(),
                 orderedTags: [],
                 variantGroups: new Map(),
                 selectedVariants: new Map(),
-                domElement: null // Будет установлено при рендеринге
+                dom: null
             };
 
-            category.tags.forEach(tag => {
-                const names = Array.isArray(tag.name) ? tag.name : [tag.name];
-                const mainName = names[0];
+            cat.tags.forEach(t => {
+                const names = Array.isArray(t.name) ? t.name : [t.name];
+                const main = names[0];
+                if (names.length > 1) catData.variantGroups.set(main, names);
 
                 names.forEach(name => {
-                    categoryData.tags.set(name, {
-                        name: name,
-                        mainName: mainName,
-                        alternative: tag.alternative || '',
-                        subgroup: tag.subgroup || '',
-                        description: tag.description || '',
-                        isVariant: name !== mainName,
-                        isMainTag: tag.main || false
+                    catData.tags.set(name, {
+                        name, mainName: main,
+                        alternative: t.alternative || '',
+                        subgroup: t.subgroup || '',
+                        description: t.description || '',
+                        isVariant: name !== main,
+                        isMainTag: t.main || false
                     });
 
-                    this.variantTags.set(name, mainName);
-                });
-
-                if (names.length > 1) {
-                    categoryData.variantGroups.set(mainName, names);
-                }
-            });
-
-            this.categories.set(category.name, categoryData);
-        });
-
-        // Создаем массив всех тегов в порядке вывода
-        this.buildAllTagsInOrder();
-    }
-
-    buildAllTagsInOrder() {
-        this.allTagsInOrder = [];
-
-        this.tagsData.categories.forEach(categoryConfig => {
-            const categoryData = this.categories.get(categoryConfig.name);
-
-            categoryConfig.tags.forEach(tagConfig => {
-                const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
-                const mainName = names[0];
-
-                names.forEach(name => {
-                    this.allTagsInOrder.push({
-                        name: name,
-                        mainName: mainName,
-                        category: categoryConfig.name,
-                        categoryData: categoryData,
-                        tagConfig: tagConfig
-                    });
+                    // Заполняем глобальный список и карту поиска
+                    const tagInfo = { name, mainName: main, category: cat.name, catData, tagConfig: t };
+                    this.allTagsInOrder.push(tagInfo);
+                    if (!this.tagIndexMap.has(name)) this.tagIndexMap.set(name, []);
+                    this.tagIndexMap.get(name).push(this.allTagsInOrder.length - 1);
                 });
             });
+            this.categories.set(cat.name, catData);
         });
     }
 
-    setupEventListeners() {
-        const tagsInput = this.domElements.tagsInput;
-        const limitCheckbox = this.domElements.limitCheckbox;
-        const removeDuplicatesCheckbox = this.domElements.removeDuplicatesCheckbox;
+    setupEvents() {
+        const { input, limitBox, dupBox, pinBtn, main, header, container } = this.dom;
 
-        tagsInput.addEventListener('input', () => {
-            this.parseInputString(tagsInput.value);
-            this.updateDisplay();
+        input.addEventListener('input', () => { this.parseInput(input.value); this.updateUI(); });
+        limitBox.addEventListener('change', () => this.updateUI());
+        dupBox.addEventListener('change', () => this.updateAlt());
+
+        // Делегирование событий тегов
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.tag-button');
+            if (!btn) return;
+            const catName = btn.closest('.category').querySelector('.category-title').textContent;
+            this.handleTagClick(catName, btn.textContent);
         });
 
-        limitCheckbox.addEventListener('change', () => {
-            this.updateDisplay();
-        });
+        const togglePin = () => {
+            this.isHeaderPinned = !this.isHeaderPinned;
+            this.updatePinState();
+            localStorage.setItem('headerPinned', this.isHeaderPinned);
+        };
+        pinBtn.addEventListener('click', togglePin);
 
-        removeDuplicatesCheckbox.addEventListener('change', () => {
-            this.updateAlternativeSection();
-        });
+        // Saved state
+        const saved = localStorage.getItem('headerPinned');
+        this.isHeaderPinned = saved !== null ? JSON.parse(saved) : true;
 
+        // Global events
+        const updateLayout = () => {
+            this.updateNavVis();
+            this.updateScrollHints();
+            if (this.isHeaderPinned) this.updateHeaderOffset();
+        };
+
+        window.addEventListener('resize', updateLayout);
+        window.addEventListener('scroll', updateLayout);
+        window.addEventListener('load', () => setTimeout(updateLayout, 100));
+
+        // Click outside to scroll top
         document.body.addEventListener('click', (e) => {
-            const container = this.domElements.mainContainer;
-            const isClickOnEmptySpace = !container.contains(e.target) && e.target !== container;
-
-            if (isClickOnEmptySpace) {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            if (!main.contains(e.target) && !header.contains(e.target)) window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+
+        this.dom.scrollHints.forEach(h => h.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' })));
     }
 
-    setupScrollIndicators() {
-        const leftHint = this.domElements.leftScrollHint;
-        const rightHint = this.domElements.rightScrollHint;
-        const container = this.domElements.mainContainer;
-
-        if (!container) return;
-
-        const updateScrollIndicators = () => {
-            const scrollY = window.scrollY;
-            const viewportWidth = window.innerWidth;
-            const containerWidth = container.offsetWidth;
-            const hasEmptySpace = viewportWidth > containerWidth + 200;
-
-            if (scrollY > 100 && hasEmptySpace) {
-                leftHint.classList.add('visible');
-                rightHint.classList.add('visible');
-            } else {
-                leftHint.classList.remove('visible');
-                rightHint.classList.remove('visible');
-            }
-        };
-
-        const scrollToTop = () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-
-        leftHint.addEventListener('click', scrollToTop);
-        rightHint.addEventListener('click', scrollToTop);
-
-        window.addEventListener('scroll', updateScrollIndicators);
-        window.addEventListener('resize', updateScrollIndicators);
-        updateScrollIndicators();
-    }
-
-    renderTags() {
-        const container = this.domElements.tagsContainer;
+    render() {
+        const { container, navList } = this.dom;
         container.innerHTML = '';
+        navList.innerHTML = '';
 
-        this.categories.forEach((categoryData, categoryName) => {
-            const categoryElement = this.createCategoryElement(categoryName, categoryData);
-            container.appendChild(categoryElement);
-            // Сохраняем ссылку на DOM элемент категории
-            categoryData.domElement = categoryElement;
-        });
+        this.categories.forEach((catData, catName) => {
+            // Render Category in Main List
+            const catDiv = this.el('div', 'category');
+            catData.dom = catDiv;
 
-        // После рендеринга обновляем навигацию
-        this.updateCategoriesNavigationVisibility();
-    }
+            const titleRow = this.el('div', 'category-title-container');
+            const left = this.el('div', 'category-title-left');
+            left.append(this.el('div', 'category-title', catName));
+            if (catData.description) left.append(this.el('button', 'category-help-button', '?', { 'data-tooltip': catData.description }));
 
-    createCategoryElement(categoryName, categoryData) {
-        const categoryDiv = document.createElement('div');
-        categoryDiv.className = 'category';
+            const scrollTop = this.el('button', 'category-scroll-top', '↑', { 'aria-label': 'Наверх' });
+            scrollTop.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        const titleContainer = document.createElement('div');
-        titleContainer.className = 'category-title-container';
+            titleRow.append(left, scrollTop);
+            catDiv.append(titleRow, this.el('div', 'category-warning util-hidden'));
 
-        const titleLeft = document.createElement('div');
-        titleLeft.className = 'category-title-left';
-
-        const title = document.createElement('div');
-        title.className = 'category-title';
-        title.textContent = categoryName;
-        titleLeft.appendChild(title);
-
-        if (categoryData.description) {
-            const helpButton = document.createElement('button');
-            helpButton.className = 'category-help-button';
-            helpButton.innerHTML = '?';
-            helpButton.setAttribute('data-tooltip', categoryData.description);
-            titleLeft.appendChild(helpButton);
-        }
-
-        titleContainer.appendChild(titleLeft);
-
-        // Добавляем кнопку прокрутки вверх для мобильных устройств
-        const scrollTopButton = document.createElement('button');
-        scrollTopButton.className = 'category-scroll-top';
-        scrollTopButton.innerHTML = '↑';
-        scrollTopButton.setAttribute('aria-label', 'Прокрутить страницу вверх');
-        scrollTopButton.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-        titleContainer.appendChild(scrollTopButton);
-
-        categoryDiv.appendChild(titleContainer);
-
-        const warningElement = document.createElement('div');
-        warningElement.className = 'category-warning util-hidden';
-        categoryDiv.appendChild(warningElement);
-
-        const subgroups = this.groupTagsBySubgroup(categoryData);
-
-        subgroups.forEach((tags, subgroupName) => {
-            const shouldShowSubgroupName = subgroupName && !subgroupName.startsWith('!');
-            const displaySubgroupName = subgroupName.startsWith('!') ? subgroupName.substring(1) : subgroupName;
-
-            if (subgroupName) {
-                const subgroupDiv = document.createElement('div');
-                subgroupDiv.className = 'subgroup';
-
-                if (shouldShowSubgroupName) {
-                    const subgroupTitle = document.createElement('div');
-                    subgroupTitle.className = 'subgroup-title';
-                    subgroupTitle.textContent = displaySubgroupName;
-                    subgroupDiv.appendChild(subgroupTitle);
+            // Render Subgroups
+            const subgroups = this.groupTags(catData);
+            subgroups.forEach((tags, subName) => {
+                const subDiv = this.el('div', 'subgroup');
+                if (subName && !subName.startsWith('!')) {
+                    subDiv.append(this.el('div', 'subgroup-title', subName));
+                } else if (subName.startsWith('!')) { // Просто контейнер без заголовка
+                    // Logic preserved implicitly by appending to subDiv
                 }
 
-                const tagsGroup = this.createTagsGroup(tags, categoryName, categoryData);
-                subgroupDiv.appendChild(tagsGroup);
-                categoryDiv.appendChild(subgroupDiv);
-            } else {
-                const tagsGroup = this.createTagsGroup(tags, categoryName, categoryData);
-                categoryDiv.appendChild(tagsGroup);
-            }
-        });
-
-        return categoryDiv;
-    }
-
-    groupTagsBySubgroup(categoryData) {
-        const subgroups = new Map();
-        const processedMainNames = new Set();
-
-        categoryData.variantGroups.forEach((variants, mainName) => {
-            const firstVariant = variants[0];
-            const tag = categoryData.tags.get(firstVariant);
-            if (tag) {
-                const subgroup = tag.subgroup || '';
-                if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
-
-                const variantGroup = {
-                    type: 'variant',
-                    mainName: mainName,
-                    variants: variants.map(variantName => categoryData.tags.get(variantName)),
-                    description: tag.description
-                };
-                subgroups.get(subgroup).push(variantGroup);
-                processedMainNames.add(mainName);
-            }
-        });
-
-        categoryData.tags.forEach(tag => {
-            if (tag.isVariant || processedMainNames.has(tag.mainName)) return;
-
-            const subgroup = tag.subgroup || '';
-            if (!subgroups.has(subgroup)) subgroups.set(subgroup, []);
-
-            subgroups.get(subgroup).push({
-                type: 'single',
-                tag: tag
-            });
-        });
-
-        return subgroups;
-    }
-
-    createTagsGroup(tags, categoryName, categoryData) {
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'tags-group';
-
-        tags.forEach(item => {
-            if (item.type === 'variant') {
-                const variantGroup = this.createVariantGroup(item, categoryName, categoryData);
-                groupDiv.appendChild(variantGroup);
-            } else {
-                const button = this.createTagButton(item.tag, categoryName, categoryData);
-                groupDiv.appendChild(button);
-            }
-        });
-
-        return groupDiv;
-    }
-
-    createVariantGroup(variantGroup, categoryName, categoryData) {
-        const variantContainer = document.createElement('div');
-        variantContainer.className = 'variant-group';
-
-        const variantButtons = document.createElement('div');
-        variantButtons.className = 'variant-buttons';
-
-        variantGroup.variants.forEach(tag => {
-            const button = this.createTagButton(tag, categoryName, categoryData);
-            variantButtons.appendChild(button);
-        });
-
-        variantContainer.appendChild(variantButtons);
-
-        if (variantGroup.description) {
-            const description = document.createElement('div');
-            description.className = 'variant-description';
-            description.textContent = variantGroup.description;
-            variantContainer.appendChild(description);
-        }
-
-        return variantContainer;
-    }
-
-    createTagButton(tag, categoryName, categoryData) {
-        const button = document.createElement('button');
-        button.className = 'tag-button util-tag-base';
-        button.textContent = tag.name;
-        button.setAttribute('data-tooltip', tag.description || '');
-
-        if (tag.isMainTag) button.classList.add('main-tag');
-
-        button.addEventListener('click', () => {
-            this.handleTagClick(categoryName, tag.name, categoryData.type);
-        });
-
-        return button;
-    }
-
-    handleTagClick(categoryName, clickedTagName, categoryType) {
-        const categoryData = this.categories.get(categoryName);
-        const tag = categoryData.tags.get(clickedTagName);
-        const mainName = tag.mainName;
-
-        switch (categoryType) {
-            case 'single':
-                this.handleSingleCategory(categoryData, mainName, clickedTagName);
-                break;
-            case 'ordered':
-                this.handleOrderedCategory(categoryData, mainName, clickedTagName);
-                break;
-            default:
-                this.handleStandardCategory(categoryData, clickedTagName, mainName);
-        }
-
-        this.updateDisplay();
-    }
-
-    handleSingleCategory(categoryData, mainName, clickedTagName) {
-        if (categoryData.selectedTags.has(mainName)) {
-            categoryData.selectedTags.delete(mainName);
-            this.selectedTags.delete(mainName);
-            categoryData.selectedVariants.delete(mainName);
-        } else {
-            if (categoryData.selectedTags.size > 0) {
-                const previousTag = Array.from(categoryData.selectedTags)[0];
-                categoryData.selectedTags.delete(previousTag);
-                this.selectedTags.delete(previousTag);
-                categoryData.selectedVariants.delete(previousTag);
-            }
-            categoryData.selectedTags.add(mainName);
-            this.selectedTags.set(mainName, categoryData.name);
-            categoryData.selectedVariants.set(mainName, clickedTagName);
-        }
-    }
-
-    handleOrderedCategory(categoryData, mainName, clickedTagName) {
-        if (categoryData.selectedTags.has(mainName)) {
-            const index = categoryData.orderedTags.indexOf(mainName);
-            categoryData.orderedTags.splice(index, 1);
-            categoryData.selectedTags.delete(mainName);
-            this.selectedTags.delete(mainName);
-            categoryData.selectedVariants.delete(mainName);
-        } else {
-            categoryData.orderedTags.push(mainName);
-            categoryData.selectedTags.add(mainName);
-            this.selectedTags.set(mainName, categoryData.name);
-            categoryData.selectedVariants.set(mainName, clickedTagName);
-        }
-
-        // Вызываем сортировку после изменения состава тегов
-        this.sortOrderedCategory(categoryData);
-    }
-
-    handleStandardCategory(categoryData, clickedTagName, mainName) {
-        const variantGroup = categoryData.variantGroups.get(mainName);
-        const isCurrentlySelected = categoryData.selectedTags.has(mainName);
-        const currentVariant = categoryData.selectedVariants.get(mainName);
-
-        if (isCurrentlySelected && currentVariant === clickedTagName) {
-            categoryData.selectedTags.delete(mainName);
-            this.selectedTags.delete(mainName);
-            categoryData.selectedVariants.delete(mainName);
-        } else {
-            categoryData.selectedTags.add(mainName);
-            this.selectedTags.set(mainName, categoryData.name);
-            categoryData.selectedVariants.set(mainName, clickedTagName);
-        }
-    }
-
-    sortOrderedCategory(categoryData) {
-        if (categoryData.type !== 'ordered') return;
-
-        const mainTags = [];
-        const nonMainTags = [];
-
-        // Разделяем теги на main и не main, сохраняя относительный порядок
-        categoryData.orderedTags.forEach(mainName => {
-            const tag = categoryData.tags.get(mainName);
-            if (tag && tag.isMainTag) {
-                mainTags.push(mainName);
-            } else {
-                nonMainTags.push(mainName);
-            }
-        });
-
-        // Объединяем: сначала main теги, потом остальные
-        categoryData.orderedTags = [...mainTags, ...nonMainTags];
-    }
-
-    createResultString() {
-        const tags = [];
-
-        this.tagsData.categories.forEach(categoryConfig => {
-            const categoryData = this.categories.get(categoryConfig.name);
-            if (!categoryData) return;
-
-            if (categoryData.type === 'ordered') {
-                categoryData.orderedTags.forEach(mainName => {
-                    const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
-                    tags.push(selectedVariant);
-                });
-            } else if (categoryData.type === 'single') {
-                if (categoryData.selectedTags.size > 0) {
-                    const mainName = Array.from(categoryData.selectedTags)[0];
-                    const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
-                    tags.push(selectedVariant);
-                }
-            } else {
-                const categoryTagsInOrder = [];
-                categoryConfig.tags.forEach(tagConfig => {
-                    const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
-                    const mainName = names[0];
-
-                    if (categoryData.selectedTags.has(mainName)) {
-                        const selectedVariant = categoryData.selectedVariants.get(mainName) || mainName;
-                        categoryTagsInOrder.push(selectedVariant);
-                    }
-                });
-                tags.push(...categoryTagsInOrder);
-            }
-        });
-
-        return tags.join(this.tagsData.separator);
-    }
-
-    processCategoryTags(processCallback) {
-        const results = [];
-
-        this.tagsData.categories.forEach(categoryConfig => {
-            const categoryData = this.categories.get(categoryConfig.name);
-            if (!categoryData) return;
-
-            processCallback(categoryConfig, categoryData, results);
-        });
-
-        return results;
-    }
-
-    createAlternativeString(removeDuplicates = false) {
-        const alternativeTags = [];
-        const seenAlternatives = new Set();
-
-        this.processCategoryTags((categoryConfig, categoryData) => {
-            this.processSelectedTags(categoryConfig, categoryData, (tag, mainName) => {
-                if (tag && tag.alternative) {
-                    if (removeDuplicates) {
-                        const normalizedAlternative = this.normalizeString(tag.alternative);
-                        if (!seenAlternatives.has(normalizedAlternative)) {
-                            alternativeTags.push(tag.alternative);
-                            seenAlternatives.add(normalizedAlternative);
-                        }
+                const groupDiv = this.el('div', 'tags-group');
+                tags.forEach(item => {
+                    if (item.type === 'variant') {
+                        const vGroup = this.el('div', 'variant-group');
+                        const vBtns = this.el('div', 'variant-buttons');
+                        item.variants.forEach(t => vBtns.append(this.createBtn(t)));
+                        vGroup.append(vBtns);
+                        if (item.desc) vGroup.append(this.el('div', 'variant-description', item.desc));
+                        groupDiv.append(vGroup);
                     } else {
-                        alternativeTags.push(tag.alternative);
+                        groupDiv.append(this.createBtn(item.tag));
                     }
-                }
+                });
+                subDiv.append(groupDiv);
+                catDiv.append(subDiv);
             });
+            container.append(catDiv);
+
+            // Render Nav Item
+            const navItem = this.el('button', 'category-nav-item', catName);
+            navItem.onclick = () => this.scrollToCat(catName);
+            navList.append(navItem);
         });
 
-        return alternativeTags.join(this.tagsData.alternativeSeparator);
+        this.updateNavVis();
+        this.updatePinState();
     }
 
-    processSelectedTags(categoryConfig, categoryData, callback) {
-        if (categoryData.type === 'ordered') {
-            categoryData.orderedTags.forEach(mainName => {
-                const tag = categoryData.tags.get(mainName);
-                callback(tag, mainName);
-            });
-        } else if (categoryData.type === 'single') {
-            if (categoryData.selectedTags.size > 0) {
-                const mainName = Array.from(categoryData.selectedTags)[0];
-                const tag = categoryData.tags.get(mainName);
-                callback(tag, mainName);
-            }
-        } else {
-            categoryConfig.tags.forEach(tagConfig => {
-                const names = Array.isArray(tagConfig.name) ? tagConfig.name : [tagConfig.name];
-                const mainName = names[0];
+    createBtn(tag) {
+        return this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
+            'data-tooltip': tag.description || ''
+        });
+    }
 
-                if (categoryData.selectedTags.has(mainName) && tagConfig.alternative) {
-                    callback(tagConfig, mainName);
-                }
+    groupTags(catData) {
+        const subs = new Map();
+        const processed = new Set();
+
+        catData.variantGroups.forEach((vars, main) => {
+            const tag = catData.tags.get(vars[0]);
+            if (!tag) return;
+            const s = tag.subgroup || '';
+            if (!subs.has(s)) subs.set(s, []);
+            subs.get(s).push({
+                type: 'variant', variants: vars.map(v => catData.tags.get(v)), desc: tag.description
             });
+            processed.add(main);
+        });
+
+        catData.tags.forEach(tag => {
+            if (tag.isVariant || processed.has(tag.mainName)) return;
+            const s = tag.subgroup || '';
+            if (!subs.has(s)) subs.set(s, []);
+            subs.get(s).push({ type: 'single', tag });
+        });
+        return subs;
+    }
+
+    handleTagClick(catName, tagName) {
+        const cat = this.categories.get(catName);
+        const tag = cat.tags.get(tagName);
+        const main = tag.mainName;
+        const setSel = (c, m, v) => {
+            c.selectedTags.add(m);
+            this.selectedTags.set(m, c.name);
+            c.selectedVariants.set(m, v);
+        };
+        const delSel = (c, m) => {
+            c.selectedTags.delete(m);
+            this.selectedTags.delete(m);
+            c.selectedVariants.delete(m);
+        };
+
+        if (cat.type === 'single') {
+            const isActive = cat.selectedTags.has(main);
+            cat.selectedTags.forEach(m => delSel(cat, m)); // Clear all
+            if (!isActive) setSel(cat, main, tagName); // Toggle on
+        } else if (cat.type === 'ordered') {
+            if (cat.selectedTags.has(main)) {
+                cat.orderedTags = cat.orderedTags.filter(t => t !== main);
+                delSel(cat, main);
+            } else {
+                cat.orderedTags.push(main);
+                setSel(cat, main, tagName);
+            }
+            // Sort: main tags first
+            cat.orderedTags.sort((a, b) => {
+                const isAm = cat.tags.get(a).isMainTag, isBm = cat.tags.get(b).isMainTag;
+                return (isAm === isBm) ? 0 : isAm ? -1 : 1;
+            });
+        } else { // Standard
+            const curVar = cat.selectedVariants.get(main);
+            if (cat.selectedTags.has(main) && curVar === tagName) delSel(cat, main);
+            else setSel(cat, main, tagName);
         }
+        this.updateUI();
     }
 
-    normalizeString(str) {
-        return str
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ')
-            .replace(/[^\w\s\[\]\/:\.\-]/g, '');
-    }
-
-    parseInputString(inputString) {
-        this.clearAllSelections();
-
-        const tags = inputString.split(this.tagsData.separator)
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0);
-
-        if (tags.length === 0) return;
-
-        let lastFoundIndex = -1;
-
-        tags.forEach(tag => {
-            // Ищем тег в массиве allTagsInOrder, начиная с позиции после последнего найденного
-            let foundIndex = -1;
-
-            // Поиск от lastFoundIndex + 1 до конца
-            for (let i = lastFoundIndex + 1; i < this.allTagsInOrder.length; i++) {
-                if (this.allTagsInOrder[i].name === tag) {
-                    foundIndex = i;
-                    break;
-                }
-            }
-
-            // Если не нашли, ищем с начала до lastFoundIndex
-            if (foundIndex === -1) {
-                for (let i = 0; i <= lastFoundIndex; i++) {
-                    if (this.allTagsInOrder[i].name === tag) {
-                        foundIndex = i;
-                        break;
-                    }
-                }
-            }
-
-            if (foundIndex !== -1) {
-                const tagInfo = this.allTagsInOrder[foundIndex];
-                const categoryData = tagInfo.categoryData;
-                const mainName = tagInfo.mainName;
-
-                if (categoryData.type === 'single') {
-                    categoryData.selectedTags.clear();
-                    categoryData.selectedTags.add(mainName);
-                    this.selectedTags.set(mainName, tagInfo.category);
-                    categoryData.selectedVariants.set(mainName, tagInfo.name);
-                } else if (categoryData.type === 'ordered') {
-                    if (!categoryData.orderedTags.includes(mainName)) {
-                        categoryData.orderedTags.push(mainName);
-                        categoryData.selectedTags.add(mainName);
-                        this.selectedTags.set(mainName, tagInfo.category);
-                        categoryData.selectedVariants.set(mainName, tagInfo.name);
-                    }
-                } else {
-                    categoryData.selectedTags.add(mainName);
-                    this.selectedTags.set(mainName, tagInfo.category);
-                    categoryData.selectedVariants.set(mainName, tagInfo.name);
-                }
-
-                lastFoundIndex = foundIndex;
-            }
-        });
-    }
-
-    clearAllSelections() {
+    parseInput(str) {
         this.selectedTags.clear();
-        this.categories.forEach(category => {
-            category.selectedTags.clear();
-            category.orderedTags = [];
-            category.selectedVariants.clear();
+        this.categories.forEach(c => {
+            c.selectedTags.clear(); c.orderedTags = []; c.selectedVariants.clear();
+        });
+
+        const rawTags = str.split(this.tagsData.separator).map(t => t.trim()).filter(Boolean);
+        if (!rawTags.length) return;
+
+        let lastIdx = -1;
+
+        rawTags.forEach(tName => {
+            const indices = this.tagIndexMap.get(tName);
+            if (!indices) return;
+
+            // Find next occurrence after lastIdx
+            let found = indices.find(i => i > lastIdx);
+            // If not found, wrapping search from start
+            if (found === undefined) found = indices[0];
+
+            if (found !== undefined) {
+                const info = this.allTagsInOrder[found];
+                const cat = info.catData;
+                const main = info.mainName;
+
+                if (cat.type === 'single') {
+                    cat.selectedTags.clear();
+                    cat.selectedTags.add(main);
+                    cat.selectedVariants.set(main, info.name);
+                } else {
+                    if (!cat.selectedTags.has(main)) {
+                        cat.selectedTags.add(main);
+                        if (cat.type === 'ordered') cat.orderedTags.push(main);
+                    }
+                    cat.selectedVariants.set(main, info.name);
+                }
+                this.selectedTags.set(main, info.category);
+                lastIdx = found;
+            }
         });
     }
 
-    updateDisplay() {
-        this.updateInputField();
-        this.updateTagsAppearance();
-        this.updateAlternativeSection();
-        this.updateLimitDisplay();
-        this.updateCategoryWarnings();
-    }
+    updateUI() {
+        // Build result string
+        const res = [];
+        this.tagsData.categories.forEach(cfg => {
+            const cat = this.categories.get(cfg.name);
+            const process = (main) => res.push(cat.selectedVariants.get(main) || main);
 
-    updateInputField() {
-        const resultString = this.createResultString();
-        const isLimitEnabled = this.domElements.limitCheckbox.checked;
+            if (cat.type === 'ordered') cat.orderedTags.forEach(process);
+            else if (cat.type === 'single') { if (cat.selectedTags.size) process([...cat.selectedTags][0]); }
+            else {
+                // Preserve config order
+                cfg.tags.forEach(t => {
+                    const main = Array.isArray(t.name) ? t.name[0] : t.name;
+                    if (cat.selectedTags.has(main)) process(main);
+                });
+            }
+        });
 
-        if (isLimitEnabled && resultString.length > this.tagsData.characterLimit) {
-            this.parseInputString(this.domElements.tagsInput.value);
-            this.updateTagsAppearance();
+        const resStr = res.join(this.tagsData.separator);
+        const limit = this.tagsData.characterLimit;
+        const isLim = this.dom.limitBox.checked;
+
+        if (isLim && resStr.length > limit) {
+            // Re-parse current input to reset state to valid previous state effectively
+            // (Simplification of original logic which re-parsed input value)
+            this.parseInput(this.dom.input.value);
         } else {
-            this.domElements.tagsInput.value = resultString;
+            this.dom.input.value = resStr;
         }
-    }
 
-    updateTagsAppearance() {
-        this.categories.forEach((categoryData, categoryName) => {
-            if (!categoryData.domElement) return;
+        this.dom.limitDisp.textContent = `${resStr.length}/${limit}`;
+        this.dom.limitDisp.classList.toggle('exceeded', isLim && resStr.length > limit);
 
-            const buttons = categoryData.domElement.querySelectorAll('.tag-button');
-
-            buttons.forEach(button => {
-                const tagName = button.textContent;
-                const tag = categoryData.tags.get(tagName);
+        // Update visuals
+        this.categories.forEach(cat => {
+            if (!cat.dom) return;
+            const btns = cat.dom.querySelectorAll('.tag-button');
+            btns.forEach(btn => {
+                const tName = btn.textContent;
+                const tag = cat.tags.get(tName);
                 if (!tag) return;
+                const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tName;
+                btn.classList.toggle('selected', sel);
 
-                const mainName = tag.mainName;
-                const isGroupSelected = categoryData.selectedTags.has(mainName);
-                const selectedVariant = categoryData.selectedVariants.get(mainName);
-                const isThisVariantSelected = isGroupSelected && selectedVariant === tagName;
-
-                button.classList.toggle('selected', isThisVariantSelected);
-
-                if (categoryData.type === 'ordered' && isThisVariantSelected) {
-                    const orderIndex = categoryData.orderedTags.indexOf(mainName);
-                    if (orderIndex !== -1) {
-                        button.classList.add('ordered');
-                        button.setAttribute('data-order', orderIndex + 1);
-                    } else {
-                        button.classList.remove('ordered');
-                        button.removeAttribute('data-order');
-                    }
+                if (cat.type === 'ordered' && sel) {
+                    btn.classList.add('ordered');
+                    btn.setAttribute('data-order', cat.orderedTags.indexOf(tag.mainName) + 1);
                 } else {
-                    button.classList.remove('ordered');
-                    button.removeAttribute('data-order');
+                    btn.classList.remove('ordered');
+                    btn.removeAttribute('data-order');
                 }
             });
+
+            // Warnings
+            const warn = cat.dom.querySelector('.category-warning');
+            let showWarn = false;
+            let txt = '';
+            if (cat.requirement === 'atLeastOne') {
+                showWarn = cat.selectedTags.size === 0;
+                txt = 'Необходимо выбрать хотя бы один тег';
+            } else if (cat.requirement === 'atLeastOneMain') {
+                showWarn = ![...cat.selectedTags].some(m => cat.tags.get(m).isMainTag);
+                txt = 'Необходимо выбрать хотя бы один главный тег';
+            }
+            warn.textContent = txt;
+            warn.classList.toggle('util-hidden', !showWarn);
         });
+
+        this.updateAlt();
     }
 
-    updateCategoryWarnings() {
-        this.categories.forEach((categoryData, categoryName) => {
-            if (!categoryData.domElement) return;
-
-            const warningElement = categoryData.domElement.querySelector('.category-warning');
-
-            if (categoryData.requirement === 'none') {
-                warningElement.classList.add('util-hidden');
-                return;
+    updateAlt() {
+        const alts = [];
+        const seen = new Set();
+        const add = (t) => {
+            if (t && t.alternative) {
+                const norm = t.alternative.trim().toLowerCase().replace(/\s+/g, ' ');
+                if (!this.dom.dupBox.checked || !seen.has(norm)) {
+                    alts.push(t.alternative);
+                    seen.add(norm);
+                }
             }
+        };
 
-            let requirementMet = false;
-            let warningText = '';
-
-            if (categoryData.requirement === 'atLeastOne') {
-                requirementMet = categoryData.selectedTags.size > 0;
-                warningText = 'Необходимо выбрать хотя бы один тег';
-            } else if (categoryData.requirement === 'atLeastOneMain') {
-                requirementMet = Array.from(categoryData.selectedTags).some(mainName => {
-                    const tag = categoryData.tags.get(mainName);
-                    return tag && tag.isMainTag;
+        this.tagsData.categories.forEach(cfg => {
+            const cat = this.categories.get(cfg.name);
+            const iter = (m) => add(cat.tags.get(m));
+            if (cat.type === 'ordered') cat.orderedTags.forEach(iter);
+            else if (cat.type === 'single') { if (cat.selectedTags.size) iter([...cat.selectedTags][0]); }
+            else {
+                cfg.tags.forEach(t => {
+                    const m = Array.isArray(t.name) ? t.name[0] : t.name;
+                    if (cat.selectedTags.has(m) && t.alternative) add(t);
                 });
-                warningText = 'Необходимо выбрать хотя бы один главный тег';
-            }
-
-            if (!requirementMet) {
-                warningElement.textContent = warningText;
-                warningElement.classList.remove('util-hidden');
-            } else {
-                warningElement.classList.add('util-hidden');
             }
         });
+
+        const s = alts.join(this.tagsData.alternativeSeparator);
+        this.dom.altSection.classList.toggle('util-hidden', !s);
+        this.dom.altOut.value = s;
+        if (this.isHeaderPinned) setTimeout(() => this.updateHeaderOffset(), 50);
     }
 
-    updateAlternativeSection() {
-        const alternativeString = this.createAlternativeString(this.domElements.removeDuplicatesCheckbox.checked);
-
-        if (alternativeString) {
-            this.domElements.alternativeSection.classList.remove('util-hidden');
-            this.domElements.alternativeOutput.value = alternativeString;
-        } else {
-            this.domElements.alternativeSection.classList.add('util-hidden');
-        }
+    scrollToCat(name) {
+        const el = this.categories.get(name)?.dom;
+        if (!el) return;
+        const offset = this.isHeaderPinned ? (this.dom.header.offsetHeight + 30) : 20;
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
     }
 
-    updateLimitDisplay() {
-        const currentLength = this.createResultString().length;
-        const limit = this.tagsData.characterLimit;
-
-        this.domElements.limitDisplay.textContent = `${currentLength}/${limit}`;
-
-        if (this.domElements.limitCheckbox.checked && currentLength > limit) {
-            this.domElements.limitDisplay.classList.add('exceeded');
-        } else {
-            this.domElements.limitDisplay.classList.remove('exceeded');
-        }
+    updateHeaderOffset() {
+        if (!this.isHeaderPinned) { this.dom.main.style.paddingTop = ''; return; }
+        const h = this.dom.header.offsetHeight;
+        this.dom.main.style.paddingTop = `${h + 45}px`;
     }
+
+    updatePinState() {
+        const { pinBtn, header, main } = this.dom;
+        const act = this.isHeaderPinned;
+        pinBtn.classList.toggle('active', act);
+        header.classList.toggle('pinned', act);
+        main.classList.toggle('has-pinned-header', act);
+        pinBtn.textContent = act ? 'Закреплено' : 'Закрепить';
+        this.updateNavVis();
+        this.updateScrollHints();
+        this.updateHeaderOffset();
+    }
+
+    updateNavVis() {
+        const need = this.dom.main.scrollHeight > window.innerHeight || this.isHeaderPinned;
+        this.dom.nav.classList.toggle('util-hidden', !need);
+    }
+
+    updateScrollHints() {
+        const vis = window.innerWidth > this.dom.main.offsetWidth + 200 && window.scrollY > 100;
+        this.dom.scrollHints.forEach(h => h.classList.toggle('visible', vis));
+    }
+
+    updateState() { this.updateUI(); }
+    showUI() { this.dom.loading.classList.add('util-hidden'); this.dom.error.classList.add('util-hidden'); this.dom.app.classList.remove('util-hidden'); }
+    error(t) { this.dom.loading.classList.add('util-hidden'); this.dom.errDetail.textContent = t; this.dom.error.classList.remove('util-hidden'); this.dom.app.classList.add('util-hidden'); }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM загружен, инициализируем TagsManager');
-    new TagsManager();
-});
+document.addEventListener('DOMContentLoaded', () => new TagsManager());

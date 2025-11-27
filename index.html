@@ -58,12 +58,15 @@
         </div>
     </div>
 
-    <!-- Функциональные элементы (по умолчанию скрыты) -->
-    <div class="container util-hidden" id="mainContainer">
-        <!-- Новый контейнер для верхней панели -->
+    <!-- Новый общий контейнер для функциональных элементов -->
+    <div id="appContainer" class="util-hidden">
+        <!-- header-panel теперь вне mainContainer -->
         <div class="header-panel">
             <div id="categoriesNav" class="categories-nav util-hidden">
-                <div class="categories-nav-title">Быстрый переход:</div>
+                <div class="categories-nav-header">
+                    <div class="categories-nav-title">Быстрый переход:</div>
+                    <button id="pinHeaderButton" class="pin-header-button" type="button">Закрепить</button>
+                </div>
                 <div id="categoriesNavList" class="categories-nav-list"></div>
             </div>
 
@@ -80,17 +83,20 @@
             </div>
         </div>
 
-        <div id="alternativeSection" class="alternative-section util-hidden">
-            <div class="alternative-controls">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="removeDuplicatesCheckbox">
-                    Убрать дубликаты альтернативных тегов
-                </label>
+        <!-- mainContainer без header-panel внутри -->
+        <div class="container" id="mainContainer">
+            <div id="alternativeSection" class="alternative-section util-hidden">
+                <div class="alternative-controls">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="removeDuplicatesCheckbox">
+                        Убрать дубликаты альтернативных тегов
+                    </label>
+                </div>
+                <textarea id="alternativeOutput" class="alternative-output util-input-base" readonly></textarea>
             </div>
-            <textarea id="alternativeOutput" class="alternative-output util-input-base" readonly></textarea>
-        </div>
 
-        <div id="tagsContainer" class="tags-container"></div>
+            <div id="tagsContainer" class="tags-container"></div>
+        </div>
     </div>
 
     <script src="script.js"></script>
