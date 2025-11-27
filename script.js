@@ -282,19 +282,33 @@ class TagsManager {
         const titleContainer = document.createElement('div');
         titleContainer.className = 'category-title-container';
 
+        const titleLeft = document.createElement('div');
+        titleLeft.className = 'category-title-left';
+
         const title = document.createElement('div');
         title.className = 'category-title';
         title.textContent = categoryName;
-        titleContainer.appendChild(title);
+        titleLeft.appendChild(title);
 
         if (categoryData.description) {
             const helpButton = document.createElement('button');
             helpButton.className = 'category-help-button';
             helpButton.innerHTML = '?';
             helpButton.setAttribute('data-tooltip', categoryData.description);
-            // Убрал создание tooltip элемента
-            titleContainer.appendChild(helpButton);
+            titleLeft.appendChild(helpButton);
         }
+
+        titleContainer.appendChild(titleLeft);
+
+        // Добавляем кнопку прокрутки вверх для мобильных устройств
+        const scrollTopButton = document.createElement('button');
+        scrollTopButton.className = 'category-scroll-top';
+        scrollTopButton.innerHTML = '↑';
+        scrollTopButton.setAttribute('aria-label', 'Прокрутить страницу вверх');
+        scrollTopButton.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        titleContainer.appendChild(scrollTopButton);
 
         categoryDiv.appendChild(titleContainer);
 
@@ -416,7 +430,6 @@ class TagsManager {
         button.setAttribute('data-tooltip', tag.description || '');
 
         if (tag.isMainTag) button.classList.add('main-tag');
-        // Убрал: if (tag.description) button.title = tag.description;
 
         button.addEventListener('click', () => {
             this.handleTagClick(categoryName, tag.name, categoryData.type);
@@ -761,13 +774,13 @@ class TagsManager {
 
             if (categoryData.requirement === 'atLeastOne') {
                 requirementMet = categoryData.selectedTags.size > 0;
-                warningText = 'Необходимо выбрать главный жанр первым';
+                warningText = 'Необходимо выбрать хотя бы один тег';
             } else if (categoryData.requirement === 'atLeastOneMain') {
                 requirementMet = Array.from(categoryData.selectedTags).some(mainName => {
                     const tag = categoryData.tags.get(mainName);
                     return tag && tag.isMainTag;
                 });
-                warningText = 'Необходимо выбрать главный жанр первым';
+                warningText = 'Необходимо выбрать хотя бы один главный тег';
             }
 
             if (!requirementMet) {
