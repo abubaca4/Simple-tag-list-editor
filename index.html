@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +8,21 @@
     <link rel="stylesheet" href="styles.css">
     <noscript>
         <style>
-            .loading-message { display: flex !important; }
-            .container { display: none !important; }
-            .error-message { display: none !important; }
+            .loading-message {
+                display: flex !important;
+            }
+
+            .container {
+                display: none !important;
+            }
+
+            .error-message {
+                display: none !important;
+            }
         </style>
     </noscript>
 </head>
+
 <body>
     <!-- Индикаторы для пустых областей -->
     <div id="leftScrollHint" class="scroll-hint scroll-hint-left">
@@ -50,18 +60,26 @@
 
     <!-- Функциональные элементы (по умолчанию скрыты) -->
     <div class="container util-hidden" id="mainContainer">
-        <div class="input-section">
-            <input type="text" id="tagsInput" class="tags-input util-input-base" placeholder="Выберите теги...">
+        <!-- Новый контейнер для верхней панели -->
+        <div class="header-panel">
+            <div id="categoriesNav" class="categories-nav util-hidden">
+                <div class="categories-nav-title">Быстрый переход:</div>
+                <div id="categoriesNavList" class="categories-nav-list"></div>
+            </div>
+
+            <div class="input-section">
+                <input type="text" id="tagsInput" class="tags-input util-input-base" placeholder="Выберите теги...">
+            </div>
+
+            <div class="limit-section">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="limitCheckbox" checked>
+                    Ограничить длину:
+                </label>
+                <span id="limitDisplay" class="limit-display"></span>
+            </div>
         </div>
-        
-        <div class="limit-section">
-            <label class="checkbox-label">
-                <input type="checkbox" id="limitCheckbox" checked>
-                Ограничить длину:
-            </label>
-            <span id="limitDisplay" class="limit-display"></span>
-        </div>
-        
+
         <div id="alternativeSection" class="alternative-section util-hidden">
             <div class="alternative-controls">
                 <label class="checkbox-label">
@@ -71,10 +89,11 @@
             </div>
             <textarea id="alternativeOutput" class="alternative-output util-input-base" readonly></textarea>
         </div>
-        
+
         <div id="tagsContainer" class="tags-container"></div>
     </div>
-    
+
     <script src="script.js"></script>
 </body>
+
 </html>

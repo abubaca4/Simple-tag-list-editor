@@ -29,6 +29,7 @@ class TagsManager {
                 this.updateLimitDisplay();
                 this.updateAlternativeSection();
                 this.setupScrollIndicators();
+                this.setupCategoriesNavigation(); // Добавляем инициализацию навигации
             } else {
                 this.showErrorMessage('Неизвестная ошибка загрузки конфигурации');
             }
@@ -52,7 +53,9 @@ class TagsManager {
             removeDuplicatesCheckbox: document.getElementById('removeDuplicatesCheckbox'),
             tagsContainer: document.getElementById('tagsContainer'),
             leftScrollHint: document.getElementById('leftScrollHint'),
-            rightScrollHint: document.getElementById('rightScrollHint')
+            rightScrollHint: document.getElementById('rightScrollHint'),
+            categoriesNav: document.getElementById('categoriesNav'), // Добавляем навигацию
+            categoriesNavList: document.getElementById('categoriesNavList') // Добавляем список навигации
         };
     }
 
@@ -102,6 +105,73 @@ class TagsManager {
 
             this.showErrorMessage(`Не удалось загрузить файл конфигурации: ${configFile}`);
             return false;
+        }
+    }
+
+    setupCategoriesNavigation() {
+        this.updateCategoriesNavigation();
+
+        // Обновляем видимость навигации при изменении размера окна и прокрутке
+        window.addEventListener('resize', () => {
+            this.updateCategoriesNavigationVisibility();
+        });
+
+        window.addEventListener('scroll', () => {
+            this.updateCategoriesNavigationVisibility();
+        });
+
+        // Инициализируем видимость
+        this.updateCategoriesNavigationVisibility();
+    }
+
+    // Создаем навигацию по категориям
+    updateCategoriesNavigation() {
+        const navList = this.domElements.categoriesNavList;
+        navList.innerHTML = '';
+
+        this.categories.forEach((categoryData, categoryName) => {
+            const navItem = document.createElement('button');
+            navItem.className = 'category-nav-item';
+            navItem.textContent = categoryName;
+            navItem.setAttribute('data-category', categoryName);
+
+            navItem.addEventListener('click', () => {
+                this.scrollToCategory(categoryName);
+            });
+
+            navList.appendChild(navItem);
+        });
+    }
+
+    // Прокрутка к категории
+    scrollToCategory(categoryName) {
+        const categoryData = this.categories.get(categoryName);
+        if (categoryData && categoryData.domElement) {
+            const element = categoryData.domElement;
+            const offsetTop = element.offsetTop - 20; // Небольшой отступ сверху
+
+            window.scrollTo({
+                top: offsetTop,
+                behavior: 'smooth'
+            });
+        }
+    }
+
+    // Обновляем видимость навигации по категориям
+    updateCategoriesNavigationVisibility() {
+        const nav = this.domElements.categoriesNav;
+        const container = this.domElements.mainContainer;
+
+        if (!container) return;
+
+        const containerHeight = container.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const hasScroll = containerHeight > viewportHeight;
+
+        if (hasScroll) {
+            nav.classList.remove('util-hidden');
+        } else {
+            nav.classList.add('util-hidden');
         }
     }
 
@@ -273,6 +343,9 @@ class TagsManager {
             // Сохраняем ссылку на DOM элемент категории
             categoryData.domElement = categoryElement;
         });
+
+        // После рендеринга обновляем навигацию
+        this.updateCategoriesNavigationVisibility();
     }
 
     createCategoryElement(categoryName, categoryData) {
