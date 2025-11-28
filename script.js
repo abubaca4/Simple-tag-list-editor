@@ -50,7 +50,10 @@ class TagsManager {
             pinBtn: id('pinHeaderButton'),
             header: document.querySelector('.header-panel'),
             main: id('mainContainer'),
-            scrollHints: [id('leftScrollHint'), id('rightScrollHint')]
+            scrollHints: [id('leftScrollHint'), id('rightScrollHint')],
+            refSection: id('referenceSection'),
+            refToggleBtn: id('toggleReferenceButton'),
+            refContent: id('referenceContent')
         };
     }
 
@@ -127,6 +130,7 @@ class TagsManager {
             const catData = {
                 ...cat,
                 requirement: cat.requirement || 'none',
+                overrideRequirementText: cat.overrideRequirementText || '',
                 tags: new Map(),
                 selectedTags: new Set(),
                 orderedTags: [],
@@ -167,6 +171,16 @@ class TagsManager {
         input.addEventListener('input', () => { this.parseInput(input.value); this.updateUI(); });
         limitBox.addEventListener('change', () => this.updateUI());
         dupBox.addEventListener('change', () => this.updateAlt());
+
+        // Events for Reference Section
+        const { refToggleBtn, refContent } = this.dom;
+
+        const toggleReference = () => {
+            const isHidden = refContent.classList.toggle('util-hidden');
+            refToggleBtn.textContent = isHidden ? 'Показать справку' : 'Скрыть справку';
+            if (this.isHeaderPinned) this.updateHeaderOffset(); // Пересчитать отступ для прикрепленной шапки
+        };
+        refToggleBtn.addEventListener('click', toggleReference);
 
         // Делегирование событий тегов
         container.addEventListener('click', (e) => {
@@ -211,6 +225,19 @@ class TagsManager {
         container.innerHTML = '';
         navList.innerHTML = '';
 
+        // Logic for Reference Section
+        const { refSection, refContent, refToggleBtn } = this.dom;
+        const referenceHtml = this.tagsData.reference || '';
+
+        if (referenceHtml) {
+            refContent.innerHTML = referenceHtml;
+            refSection.classList.remove('util-hidden');
+            refContent.classList.add('util-hidden'); // Скрываем по умолчанию
+            refToggleBtn.textContent = 'Показать справку';
+        } else {
+            refSection.classList.add('util-hidden');
+        }
+
         this.categories.forEach((catData, catName) => {
             // Render Category in Main List
             const catDiv = this.el('div', 'category');
@@ -221,7 +248,7 @@ class TagsManager {
             left.append(this.el('div', 'category-title', catName));
             if (catData.description) left.append(this.el('button', 'category-help-button', '?', { 'data-tooltip': catData.description }));
 
-            const scrollTop = this.el('button', 'category-scroll-top', '↑', { 'aria-label': 'Наверх' });
+            const scrollTop = this.el('button', 'category-scroll-top', '˄', { 'aria-label': 'Наверх' });
             scrollTop.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
             titleRow.append(left, scrollTop);
@@ -436,10 +463,10 @@ class TagsManager {
             let txt = '';
             if (cat.requirement === 'atLeastOne') {
                 showWarn = cat.selectedTags.size === 0;
-                txt = 'Необходимо выбрать хотя бы один тег';
+                txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один главный тег';
             } else if (cat.requirement === 'atLeastOneMain') {
                 showWarn = ![...cat.selectedTags].some(m => cat.tags.get(m).isMainTag);
-                txt = 'Необходимо выбрать хотя бы один главный тег';
+                txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один главный тег';
             }
             warn.textContent = txt;
             warn.classList.toggle('util-hidden', !showWarn);

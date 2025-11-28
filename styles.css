@@ -559,6 +559,37 @@ body {
     align-items: center;
 }
 
+/* НОВЫЙ СТИЛЬ ДЛЯ СПРАВКИ */
+.reference-section {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.reference-section #toggleReferenceButton {
+    /* Чтобы кнопка выглядела как в шапке */
+    border-width: 2px;
+    margin-bottom: 15px;
+}
+
+.reference-content {
+    background: var(--container-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: left;
+    box-shadow: 0 1px 5px var(--shadow-color);
+    transition: var(--transition);
+}
+
+/* Стили для содержимого, если оно содержит HTML */
+.reference-content p {
+    margin-bottom: 10px;
+}
+
+.reference-content ul {
+    margin-left: 20px;
+}
+
 /* Media Queries */
 @media (max-width: 1400px) {
     .scroll-hint {
