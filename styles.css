@@ -4,9 +4,9 @@
     --container-bg: white;
     --border-color: #ddd;
     --border-hover-color: #bdbdbd;
-    --border-focus-color: #4CAF50;
-    --selected-bg: #e8f5e8;
-    --selected-border: #4CAF50;
+    --border-focus-color: #467cae;
+    --selected-bg: #d2fcda;
+    --selected-border: #26c042;
     --category-title-color: #2c3e50;
     --category-border: #ecf0f1;
     --alternative-bg: #f9f9f9;
@@ -15,9 +15,9 @@
     --limit-exceeded: #f44336;
     --variant-group-bg: #fafafa;
     --shadow-color: rgba(0, 0, 0, 0.1);
-    --main-tag-bg: #e8f4fc;
+    --main-tag-bg: #white;
     --main-tag-border: #71c3e9;
-    --main-tag-text: #1a5276;
+    --main-tag-text: #0ca1e7;
     --warning-color: #dc3545;
     --help-bg: #6c757d;
     --tooltip-bg: #333;
@@ -37,8 +37,8 @@
         --container-bg: #2d2d2d;
         --border-color: #444;
         --border-hover-color: #666;
-        --selected-bg: #1b3d1b;
-        --category-title-color: #81c784;
+        --selected-bg: #273f29;
+        --category-title-color: #ab7676;
         --category-border: #444;
         --alternative-bg: #3d3d3d;
         --checkbox-bg: #444;
@@ -46,7 +46,7 @@
         --limit-exceeded: #ff6b6b;
         --variant-group-bg: #3d3d3d;
         --shadow-color: rgba(0, 0, 0, 0.3);
-        --main-tag-bg: #1a3b4a;
+        --main-tag-bg: #2d2d2d;
         --main-tag-text: #a8d8f0;
         --tooltip-bg: #e0e0e0;
         --tooltip-text: #333;
@@ -235,19 +235,30 @@ body {
 }
 
 /* Controls */
-.input-section,
-.limit-section {
+.input-section {
     margin-bottom: 20px;
 }
 
-.limit-section,
-.checkbox-label {
+.header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Распределить пространство */
+    margin-bottom: 20px;
+    /* Отступ после новой секции */
+}
+
+.limit-section {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 0;
+    /* Убираем, так как теперь он в header-controls */
 }
 
 .checkbox-label {
+    display: flex;
+    align-items: center;
     font-size: 14px;
     cursor: pointer;
     color: var(--text-color);
@@ -356,7 +367,7 @@ body {
 .category-warning {
     color: var(--warning-color);
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 500;
     margin-bottom: 10px;
     padding: 8px 12px;
     background: rgba(220, 53, 69, 0.1);
@@ -408,7 +419,7 @@ body {
     background-color: var(--main-tag-bg);
     border-color: var(--main-tag-border);
     color: var(--main-tag-text);
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .tag-button.main-tag.selected {
@@ -590,6 +601,34 @@ body {
     margin-left: 20px;
 }
 
+.reference-content a {
+    color: var(--border-focus-color);
+    text-decoration: none;
+    transition: var(--transition);
+    border-bottom: 1px solid transparent;
+}
+
+.reference-content a:hover {
+    border-bottom-color: var(--border-focus-color);
+    opacity: 0.8;
+}
+
+.reference-content a:focus {
+    outline: 2px solid var(--border-focus-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .reference-content a {
+        color: #71c3e9;
+    }
+
+    .reference-content a:hover {
+        opacity: 0.9;
+    }
+}
+
 /* Media Queries */
 @media (max-width: 1400px) {
     .scroll-hint {
@@ -630,6 +669,18 @@ body {
         padding: 5px 10px;
         font-size: 12px;
     }
+
+    .header-controls {
+        /* Добавление адаптивности для header-controls */
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .limit-section {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
 
 @media (max-width: 480px) {
@@ -650,5 +701,90 @@ body {
 
     .categories-nav-list {
         justify-content: center;
+    }
+}
+
+.theme-toggle-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    transition: var(--transition);
+}
+
+.theme-icon {
+    font-size: 14px;
+}
+
+.theme-text {
+    font-size: 13px;
+}
+
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --container-bg: #2d2d2d;
+    --border-color: #444;
+    --border-hover-color: #666;
+    --selected-bg: #273f29;
+    --category-title-color: #ab7676;
+    --category-border: #444;
+    --alternative-bg: #3d3d3d;
+    --checkbox-bg: #444;
+    --limit-color: #e0e0e0;
+    --limit-exceeded: #ff6b6b;
+    --variant-group-bg: #3d3d3d;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --main-tag-bg: #2d2d2d;
+    --main-tag-text: #a8d8f0;
+    --tooltip-bg: #e0e0e0;
+    --tooltip-text: #333;
+    --scroll-hint-bg: rgba(113, 195, 233, 0.8);
+    --scroll-hint-text: #1a1a1a;
+}
+
+[data-theme="light"] {
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --container-bg: white;
+    --border-color: #ddd;
+    --border-hover-color: #bdbdbd;
+    --border-focus-color: #467cae;
+    --selected-bg: #d2fcda;
+    --selected-border: #26c042;
+    --category-title-color: #2c3e50;
+    --category-border: #ecf0f1;
+    --alternative-bg: #f9f9f9;
+    --checkbox-bg: white;
+    --limit-color: #333;
+    --limit-exceeded: #f44336;
+    --variant-group-bg: #fafafa;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --main-tag-bg: white;
+    --main-tag-border: #71c3e9;
+    --main-tag-text: #0ca1e7;
+    --warning-color: #dc3545;
+    --help-bg: #6c757d;
+    --tooltip-bg: #333;
+    --tooltip-text: white;
+    --scroll-hint-bg: rgba(113, 195, 233, 0.9);
+    --scroll-hint-text: white;
+    --nav-item-bg: var(--container-bg);
+    --nav-item-hover: var(--alternative-bg);
+    --nav-item-active: var(--selected-bg);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .theme-toggle-button .theme-text {
+        display: none;
+    }
+
+    .theme-toggle-button {
+        padding: 6px 8px;
+    }
+
+    .theme-icon {
+        font-size: 16px;
     }
 }

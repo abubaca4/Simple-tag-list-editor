@@ -7,6 +7,19 @@ class TagsManager {
         this.tagIndexMap = new Map(); // Оптимизация поиска
         this.isHeaderPinned = true;
         this.dom = {}; // Кэш DOM
+
+        this.themeState = 'auto'; // auto, dark, light
+        this.themeIcons = {
+            auto: '🌓',
+            dark: '🌙',
+            light: '☀️'
+        };
+        this.themeTexts = {
+            auto: 'Авто',
+            dark: 'Тёмная',
+            light: 'Светлая'
+        };
+
         this.initialize();
     }
 
@@ -53,7 +66,10 @@ class TagsManager {
             scrollHints: [id('leftScrollHint'), id('rightScrollHint')],
             refSection: id('referenceSection'),
             refToggleBtn: id('toggleReferenceButton'),
-            refContent: id('referenceContent')
+            refContent: id('referenceContent'),
+            themeToggleBtn: id('themeToggleButton'),
+            themeIcon: document.querySelector('.theme-icon'),
+            themeText: document.querySelector('.theme-text')
         };
     }
 
@@ -166,7 +182,7 @@ class TagsManager {
     }
 
     setupEvents() {
-        const { input, limitBox, dupBox, pinBtn, main, header, container } = this.dom;
+        const { input, limitBox, dupBox, pinBtn, main, header, container, themeToggleBtn } = this.dom;
 
         input.addEventListener('input', () => { this.parseInput(input.value); this.updateUI(); });
         limitBox.addEventListener('change', () => this.updateUI());
@@ -177,7 +193,7 @@ class TagsManager {
 
         const toggleReference = () => {
             const isHidden = refContent.classList.toggle('util-hidden');
-            refToggleBtn.textContent = isHidden ? 'Показать справку' : 'Скрыть справку';
+            refToggleBtn.textContent = isHidden ? 'Важная информация' : 'Скрыть';
             if (this.isHeaderPinned) this.updateHeaderOffset(); // Пересчитать отступ для прикрепленной шапки
         };
         refToggleBtn.addEventListener('click', toggleReference);
@@ -200,6 +216,14 @@ class TagsManager {
         // Saved state
         const saved = localStorage.getItem('headerPinned');
         this.isHeaderPinned = saved !== null ? JSON.parse(saved) : true;
+
+        themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            this.themeState = savedTheme;
+            this.applyTheme();
+        }
 
         // Global events
         const updateLayout = () => {
@@ -233,7 +257,7 @@ class TagsManager {
             refContent.innerHTML = referenceHtml;
             refSection.classList.remove('util-hidden');
             refContent.classList.add('util-hidden'); // Скрываем по умолчанию
-            refToggleBtn.textContent = 'Показать справку';
+            refToggleBtn.textContent = 'Важная информация';
         } else {
             refSection.classList.add('util-hidden');
         }
@@ -296,6 +320,41 @@ class TagsManager {
         return this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
             'data-tooltip': tag.description || ''
         });
+    }
+
+    toggleTheme() {
+        const states = ['auto', 'dark', 'light'];
+        const currentIndex = states.indexOf(this.themeState);
+        this.themeState = states[(currentIndex + 1) % states.length];
+
+        this.applyTheme();
+        this.saveTheme();
+    }
+
+    applyTheme() {
+        const html = document.documentElement;
+
+        // Устанавливаем data-атрибут для принудительной темы
+        if (this.themeState === 'auto') {
+            html.removeAttribute('data-theme');
+        } else {
+            html.setAttribute('data-theme', this.themeState);
+        }
+
+        // Обновляем иконку и текст кнопки
+        if (this.dom.themeIcon) {
+            this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
+        }
+        if (this.dom.themeText) {
+            this.dom.themeText.textContent = this.themeTexts[this.themeState];
+        }
+
+        // Обновляем title для доступности
+        this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
+    }
+
+    saveTheme() {
+        localStorage.setItem('theme', this.themeState);
     }
 
     groupTags(catData) {
@@ -532,7 +591,7 @@ class TagsManager {
         pinBtn.classList.toggle('active', act);
         header.classList.toggle('pinned', act);
         main.classList.toggle('has-pinned-header', act);
-        pinBtn.textContent = act ? 'Закреплено' : 'Закрепить';
+        pinBtn.textContent = act ? 'Закреплено' : 'Закрепить окно';
         this.updateNavVis();
         this.updateScrollHints();
         this.updateHeaderOffset();
