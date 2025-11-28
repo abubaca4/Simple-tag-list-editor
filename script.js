@@ -4,11 +4,14 @@ class TagsManager {
         this.selectedTags = new Map();
         this.categories = new Map();
         this.allTagsInOrder = [];
-        this.tagIndexMap = new Map(); // Оптимизация поиска
+        this.tagIndexMap = new Map();
+        this.knownAsMap = new Map(); // Новая карта для поиска по alias
+        this.altTagSearchMap = new Map();
+        this.unrecognizedTags = []; // ДОБАВЛЕНО: для хранения нераспознанных тегов
         this.isHeaderPinned = true;
-        this.dom = {}; // Кэш DOM
+        this.dom = {};
 
-        this.themeState = 'auto'; // auto, dark, light
+        this.themeState = 'auto';
         this.themeIcons = {
             auto: '🌓',
             dark: '🌙',
@@ -32,13 +35,11 @@ class TagsManager {
                 this.setupEvents();
                 this.render();
                 this.parseInput(this.dom.input.value);
-                this.updateUI(); // Заменено updateState() на updateUI()
+                this.updateUI();
             }
         } catch (e) {
             console.error(e);
-            // Если ошибка была выброшена из loadData, то error() будет вызвана там
-            // Если тут - значит, что-то пошло не так после загрузки.
-            if (!this.dom.error.classList.contains('util-hidden')) return; // Если уже показано сообщение об ошибке
+            if (!this.dom.error.classList.contains('util-hidden')) return;
             this.error(`Критическая ошибка инициализации: ${e.message}`, 'Критическая ошибка');
         }
     }
@@ -49,9 +50,10 @@ class TagsManager {
             loading: id('loadingMessage'),
             error: id('errorMessage'),
             errDetail: id('errorDetails'),
-            errTitle: id('errorTitle'), // Добавлено для заголовка
+            errTitle: id('errorTitle'),
             app: id('appContainer'),
             input: id('tagsInput'),
+            unrecWarn: id('unrecognizedTagsWarning'), // ДОБАВЛЕНО
             limitBox: id('limitCheckbox'),
             limitDisp: id('limitDisplay'),
             altSection: id('alternativeSection'),
@@ -73,7 +75,6 @@ class TagsManager {
         };
     }
 
-    // Хелпер создания элементов
     el(tag, cls = '', text = '', attrs = {}) {
         const d = document.createElement(tag);
         if (cls) d.className = cls;
@@ -91,14 +92,10 @@ class TagsManager {
 
         const fetchFile = async (f) => {
             const r = await fetch(f);
-            if (!r.ok) {
-                // 404/403/500...
-                throw new Error(`Файл не найден или недоступен (статус: ${r.status})`);
-            }
+            if (!r.ok) throw new Error(`Файл не найден или недоступен (статус: ${r.status})`);
             try {
                 return await r.json();
             } catch (jsonE) {
-                // Ошибка парсинга JSON
                 throw new Error(`Ошибка разбора JSON: ${jsonE.message}`);
             }
         };
@@ -118,7 +115,6 @@ class TagsManager {
                 errorText = `Файл конфигурации **${file}** содержит ошибку в формате JSON: ${e.message.split(':').slice(1).join(':').trim()}`;
                 errorTitle = 'Ошибка в формате JSON';
             } else if (file !== 'tags.json') {
-                // Попытка загрузить tags.json в качестве запасного варианта, если исходный файл не загрузился
                 try {
                     this.tagsData = await fetchFile('tags.json');
                     return true;
@@ -129,7 +125,7 @@ class TagsManager {
                 }
             }
 
-            if (!this.tagsData) { // Если даже после фоллбэка нет данных
+            if (!this.tagsData) {
                 this.error(errorText, errorTitle);
                 return false;
             }
@@ -141,6 +137,8 @@ class TagsManager {
         this.categories.clear();
         this.allTagsInOrder = [];
         this.tagIndexMap.clear();
+        this.knownAsMap.clear();
+        this.altTagSearchMap.clear();
 
         this.tagsData.categories.forEach(cat => {
             const catData = {
@@ -167,43 +165,88 @@ class TagsManager {
                         subgroup: t.subgroup || '',
                         description: t.description || '',
                         isVariant: name !== main,
-                        isMainTag: t.main || false
+                        isMainTag: t.main || false,
+                        knownAs: t.knownAs || []
                     });
 
-                    // Заполняем глобальный список и карту поиска
+                    // Заполняем глобальный список и карты поиска
                     const tagInfo = { name, mainName: main, category: cat.name, catData, tagConfig: t };
                     this.allTagsInOrder.push(tagInfo);
-                    if (!this.tagIndexMap.has(name)) this.tagIndexMap.set(name, []);
-                    this.tagIndexMap.get(name).push(this.allTagsInOrder.length - 1);
+                    const currentIndex = this.allTagsInOrder.length - 1;
+
+                    // 1. Индексация по имени: Ключ в нижнем регистре
+                    const lowerName = name.toLowerCase();
+                    if (!this.tagIndexMap.has(lowerName)) this.tagIndexMap.set(lowerName, []);
+                    this.tagIndexMap.get(lowerName).push(currentIndex);
+
+                    // 2. Индексация по knownAs: Ключи в нижнем регистре
+                    if (t.knownAs && Array.isArray(t.knownAs)) {
+                        t.knownAs.forEach(alias => {
+                            const cleanAlias = alias.trim().toLowerCase(); // Приводим к нижнему регистру
+                            if (!this.knownAsMap.has(cleanAlias)) this.knownAsMap.set(cleanAlias, []);
+                            this.knownAsMap.get(cleanAlias).push(currentIndex);
+                        });
+                    }
+
+                    // 3. Индексация альтернативных имен
+                    if (names.length === 1 && name.includes('/')) {
+                        const generatedNames = this.generateAltNames(name);
+                        generatedNames.forEach(altName => {
+                            const lowerAltName = altName.toLowerCase(); // Приводим к нижнему регистру
+                            if (!this.altTagSearchMap.has(lowerAltName)) this.altTagSearchMap.set(lowerAltName, []);
+                            this.altTagSearchMap.get(lowerAltName).push(currentIndex);
+                        });
+                    }
                 });
             });
             this.categories.set(cat.name, catData);
         });
     }
 
-    setupEvents() {
-        const { input, limitBox, dupBox, pinBtn, main, header, container, themeToggleBtn } = this.dom;
+    generateAltNames(name) {
+        const parts = name.split(/\s+/);
+        const slashParts = parts.map(p => p.split('/').filter(Boolean));
 
-        input.addEventListener('input', () => { this.parseInput(input.value); this.updateUI(); });
+        const combine = (arr, index = 0, current = []) => {
+            if (index === arr.length) return [current.join(' ').trim()];
+            let results = [];
+            for (const item of arr[index]) {
+                results.push(...combine(arr, index + 1, [...current, item]));
+            }
+            return results;
+        };
+
+        return combine(slashParts).filter(Boolean);
+    }
+
+    setupEvents() {
+        const { input, limitBox, dupBox, pinBtn, main, header, container, themeToggleBtn, unrecWarn } = this.dom; // ДОБАВЛЕНО unrecWarn
+
+        // ИЗМЕНЕНО: Скрываем предупреждение при ручном вводе
+        input.addEventListener('input', () => {
+            unrecWarn.classList.add('util-hidden'); // Скрываем предупреждение, как только пользователь начинает ввод
+            this.parseInput(input.value);
+            this.updateUI();
+        });
+
         limitBox.addEventListener('change', () => this.updateUI());
         dupBox.addEventListener('change', () => this.updateAlt());
 
-        // Events for Reference Section
         const { refToggleBtn, refContent } = this.dom;
-
         const toggleReference = () => {
             const isHidden = refContent.classList.toggle('util-hidden');
             refToggleBtn.textContent = isHidden ? 'Важная информация' : 'Скрыть';
-            if (this.isHeaderPinned) this.updateHeaderOffset(); // Пересчитать отступ для прикрепленной шапки
+            if (this.isHeaderPinned) this.updateHeaderOffset();
         };
         refToggleBtn.addEventListener('click', toggleReference);
 
-        // Делегирование событий тегов
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.tag-button');
             if (!btn) return;
             const catName = btn.closest('.category').querySelector('.category-title').textContent;
             this.handleTagClick(catName, btn.textContent);
+            // ПРИМЕЧАНИЕ: При нажатии на кнопку предупреждение не скрывается явно. 
+            // Его видимость обновится в updateUI на основе результата парсинга.
         });
 
         const togglePin = () => {
@@ -213,7 +256,6 @@ class TagsManager {
         };
         pinBtn.addEventListener('click', togglePin);
 
-        // Saved state
         const saved = localStorage.getItem('headerPinned');
         this.isHeaderPinned = saved !== null ? JSON.parse(saved) : true;
 
@@ -225,7 +267,6 @@ class TagsManager {
             this.applyTheme();
         }
 
-        // Global events
         const updateLayout = () => {
             this.updateNavVis();
             this.updateScrollHints();
@@ -236,7 +277,6 @@ class TagsManager {
         window.addEventListener('scroll', updateLayout);
         window.addEventListener('load', () => setTimeout(updateLayout, 100));
 
-        // Click outside to scroll top
         document.body.addEventListener('click', (e) => {
             if (!main.contains(e.target) && !header.contains(e.target)) window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -249,21 +289,19 @@ class TagsManager {
         container.innerHTML = '';
         navList.innerHTML = '';
 
-        // Logic for Reference Section
         const { refSection, refContent, refToggleBtn } = this.dom;
         const referenceHtml = this.tagsData.reference || '';
 
         if (referenceHtml) {
             refContent.innerHTML = referenceHtml;
             refSection.classList.remove('util-hidden');
-            refContent.classList.add('util-hidden'); // Скрываем по умолчанию
+            refContent.classList.add('util-hidden');
             refToggleBtn.textContent = 'Важная информация';
         } else {
             refSection.classList.add('util-hidden');
         }
 
         this.categories.forEach((catData, catName) => {
-            // Render Category in Main List
             const catDiv = this.el('div', 'category');
             catData.dom = catDiv;
 
@@ -278,14 +316,11 @@ class TagsManager {
             titleRow.append(left, scrollTop);
             catDiv.append(titleRow, this.el('div', 'category-warning util-hidden'));
 
-            // Render Subgroups
             const subgroups = this.groupTags(catData);
             subgroups.forEach((tags, subName) => {
                 const subDiv = this.el('div', 'subgroup');
                 if (subName && !subName.startsWith('!')) {
                     subDiv.append(this.el('div', 'subgroup-title', subName));
-                } else if (subName.startsWith('!')) { // Просто контейнер без заголовка
-                    // Logic preserved implicitly by appending to subDiv
                 }
 
                 const groupDiv = this.el('div', 'tags-group');
@@ -306,7 +341,6 @@ class TagsManager {
             });
             container.append(catDiv);
 
-            // Render Nav Item
             const navItem = this.el('button', 'category-nav-item', catName);
             navItem.onclick = () => this.scrollToCat(catName);
             navList.append(navItem);
@@ -333,23 +367,14 @@ class TagsManager {
 
     applyTheme() {
         const html = document.documentElement;
-
-        // Устанавливаем data-атрибут для принудительной темы
         if (this.themeState === 'auto') {
             html.removeAttribute('data-theme');
         } else {
             html.setAttribute('data-theme', this.themeState);
         }
 
-        // Обновляем иконку и текст кнопки
-        if (this.dom.themeIcon) {
-            this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
-        }
-        if (this.dom.themeText) {
-            this.dom.themeText.textContent = this.themeTexts[this.themeState];
-        }
-
-        // Обновляем title для доступности
+        if (this.dom.themeIcon) this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
+        if (this.dom.themeText) this.dom.themeText.textContent = this.themeTexts[this.themeState];
         this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
     }
 
@@ -398,8 +423,8 @@ class TagsManager {
 
         if (cat.type === 'single') {
             const isActive = cat.selectedTags.has(main);
-            cat.selectedTags.forEach(m => delSel(cat, m)); // Clear all
-            if (!isActive) setSel(cat, main, tagName); // Toggle on
+            cat.selectedTags.forEach(m => delSel(cat, m));
+            if (!isActive) setSel(cat, main, tagName);
         } else if (cat.type === 'ordered') {
             if (cat.selectedTags.has(main)) {
                 cat.orderedTags = cat.orderedTags.filter(t => t !== main);
@@ -408,12 +433,11 @@ class TagsManager {
                 cat.orderedTags.push(main);
                 setSel(cat, main, tagName);
             }
-            // Sort: main tags first
             cat.orderedTags.sort((a, b) => {
                 const isAm = cat.tags.get(a).isMainTag, isBm = cat.tags.get(b).isMainTag;
                 return (isAm === isBm) ? 0 : isAm ? -1 : 1;
             });
-        } else { // Standard
+        } else {
             const curVar = cat.selectedVariants.get(main);
             if (cat.selectedTags.has(main) && curVar === tagName) delSel(cat, main);
             else setSel(cat, main, tagName);
@@ -427,22 +451,50 @@ class TagsManager {
             c.selectedTags.clear(); c.orderedTags = []; c.selectedVariants.clear();
         });
 
-        const rawTags = str.split(this.tagsData.separator).map(t => t.trim()).filter(Boolean);
+        this.unrecognizedTags = []; // ДОБАВЛЕНО: Сброс списка нераспознанных тегов
+
+        // Разделяем, обрезаем пробелы, но сохраняем регистр
+        const rawTags = str.split(this.tagsData.separator)
+            .map(t => t.trim())
+            .filter(Boolean);
+
         if (!rawTags.length) return;
 
+        const recognizedIndices = new Set(); // ДОБАВЛЕНО: Индексы распознанных тегов в массиве rawTags
         let lastIdx = -1;
 
-        rawTags.forEach(tName => {
-            const indices = this.tagIndexMap.get(tName);
-            if (!indices) return;
+        // Вспомогательная функция для кольцевого поиска
+        const findRingIndex = (indices) => {
+            if (!indices) return -1;
+            const sorted = [...indices].sort((a, b) => a - b);
+            const after = sorted.find(i => i > lastIdx);
+            return after !== undefined ? after : sorted.find(i => i <= lastIdx);
+        };
 
-            // Find next occurrence after lastIdx
-            let found = indices.find(i => i > lastIdx);
-            // If not found, wrapping search from start
-            if (found === undefined) found = indices[0];
+        rawTags.forEach((tNameOriginal, tagIndex) => { // ИЗМЕНЕНО: Итерируем по rawTags с индексом
+            const tName = tNameOriginal.toLowerCase(); // ИЗМЕНЕНО: Переводим в нижний регистр только для поиска
+            let foundIndex = -1;
 
-            if (found !== undefined) {
-                const info = this.allTagsInOrder[found];
+            // tName уже в нижнем регистре
+
+            // 1. Поиск по имени
+            if (this.tagIndexMap.has(tName)) {
+                foundIndex = findRingIndex(this.tagIndexMap.get(tName));
+            }
+
+            // 2. Поиск по knownAs
+            if ((foundIndex === -1 || foundIndex === undefined) && this.knownAsMap.has(tName)) {
+                foundIndex = findRingIndex(this.knownAsMap.get(tName));
+            }
+
+            // 3. Альтернативный поиск
+            if ((foundIndex === -1 || foundIndex === undefined) && this.altTagSearchMap.has(tName)) {
+                foundIndex = findRingIndex(this.altTagSearchMap.get(tName));
+            }
+
+            // Применение результата (логика не меняется)
+            if (foundIndex !== -1 && foundIndex !== undefined) {
+                const info = this.allTagsInOrder[foundIndex];
                 const cat = info.catData;
                 const main = info.mainName;
 
@@ -458,13 +510,16 @@ class TagsManager {
                     cat.selectedVariants.set(main, info.name);
                 }
                 this.selectedTags.set(main, info.category);
-                lastIdx = found;
+                lastIdx = foundIndex;
+                recognizedIndices.add(tagIndex); // ДОБАВЛЕНО: Отмечаем индекс как распознанный
             }
         });
+
+        // ДОБАВЛЕНО: Сбор нераспознанных тегов
+        this.unrecognizedTags = rawTags.filter((_, index) => !recognizedIndices.has(index));
     }
 
     updateUI() {
-        // Build result string
         const res = [];
         this.tagsData.categories.forEach(cfg => {
             const cat = this.categories.get(cfg.name);
@@ -473,7 +528,6 @@ class TagsManager {
             if (cat.type === 'ordered') cat.orderedTags.forEach(process);
             else if (cat.type === 'single') { if (cat.selectedTags.size) process([...cat.selectedTags][0]); }
             else {
-                // Preserve config order
                 cfg.tags.forEach(t => {
                     const main = Array.isArray(t.name) ? t.name[0] : t.name;
                     if (cat.selectedTags.has(main)) process(main);
@@ -486,8 +540,6 @@ class TagsManager {
         const isLim = this.dom.limitBox.checked;
 
         if (isLim && resStr.length > limit) {
-            // Re-parse current input to reset state to valid previous state effectively
-            // (Simplification of original logic which re-parsed input value)
             this.parseInput(this.dom.input.value);
         } else {
             this.dom.input.value = resStr;
@@ -496,7 +548,16 @@ class TagsManager {
         this.dom.limitDisp.textContent = `${resStr.length}/${limit}`;
         this.dom.limitDisp.classList.toggle('exceeded', isLim && resStr.length > limit);
 
-        // Update visuals
+        // ДОБАВЛЕНО: Обновление предупреждения о нераспознанных тегах
+        const { unrecWarn } = this.dom;
+        if (this.unrecognizedTags.length > 0) {
+            const unrecStr = this.unrecognizedTags.join(', '); // Формат: <теги через ,>
+            unrecWarn.textContent = `Не распознано: ${unrecStr}`;
+            unrecWarn.classList.remove('util-hidden');
+        } else {
+            unrecWarn.classList.add('util-hidden');
+        }
+
         this.categories.forEach(cat => {
             if (!cat.dom) return;
             const btns = cat.dom.querySelectorAll('.tag-button');
@@ -516,7 +577,6 @@ class TagsManager {
                 }
             });
 
-            // Warnings
             const warn = cat.dom.querySelector('.category-warning');
             let showWarn = false;
             let txt = '';
@@ -553,11 +613,9 @@ class TagsManager {
             if (cat.type === 'ordered') cat.orderedTags.forEach(iter);
             else if (cat.type === 'single') { if (cat.selectedTags.size) iter([...cat.selectedTags][0]); }
             else {
-                // Итерация через все теги в категории для сохранения порядка
                 cfg.tags.forEach(t => {
                     const m = Array.isArray(t.name) ? t.name[0] : t.name;
                     if (cat.selectedTags.has(m)) {
-                        // Используем выбранный вариант для альтернативы, если есть
                         const selectedName = cat.selectedVariants.get(m);
                         add(cat.tags.get(selectedName || m));
                     }
@@ -607,15 +665,12 @@ class TagsManager {
         this.dom.scrollHints.forEach(h => h.classList.toggle('visible', vis));
     }
 
-    // Удален updateState()
-
     showUI() { this.dom.loading.classList.add('util-hidden'); this.dom.error.classList.add('util-hidden'); this.dom.app.classList.remove('util-hidden'); }
 
-    // Обновлен метод error для установки заголовка
     error(detailText, title = 'Ошибка загрузки конфигурации') {
         this.dom.loading.classList.add('util-hidden');
-        this.dom.errTitle.textContent = title; // Устанавливаем заголовок
-        this.dom.errDetail.innerHTML = detailText.replace(/\*\*(.*?)\*\*/g, '<code>$1</code>'); // Используем <code> для выделения файлов
+        this.dom.errTitle.textContent = title;
+        this.dom.errDetail.innerHTML = detailText.replace(/\*\*(.*?)\*\*/g, '<code>$1</code>');
         this.dom.error.classList.remove('util-hidden');
         this.dom.app.classList.add('util-hidden');
     }

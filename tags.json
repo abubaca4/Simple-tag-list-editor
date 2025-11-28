@@ -32,9 +32,10 @@
           "description": "Юмористический контент"
         },
         {
-          "name": ["фэнтези", "fantasy", "фантастика"],
+          "name": "фэнтези",
           "alternative": "fantasy",
           "subgroup": "Фантастика",
+          "knownAs": ["fantasy", "фантастика"],
           "description": "Миры с магией и мифическими существами",
           "main": true
         },
