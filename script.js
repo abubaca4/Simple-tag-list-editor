@@ -1,5 +1,8 @@
 class TagsManager {
     constructor() {
+        // Начинает асинхронную загрузку конфигурационного файла tags.json
+        this.dataPromise = this.startLoadingData();
+
         this.tagsData = null;
         this.selectedTags = new Map();
         this.categories = new Map();
@@ -10,25 +13,74 @@ class TagsManager {
         this.unrecognizedTags = [];
         this.isHeaderPinned = true;
         this.dom = {};
+        this.scrollTicking = false;
 
         this.themeState = 'auto';
         this.themeIcons = { auto: '🌓', dark: '🌙', light: '☀️' };
         this.themeTexts = { auto: 'Авто', dark: 'Тёмная', light: 'Светлая' };
 
+        // Запускает главную последовательность инициализации
         this.initialize();
+    }
+
+    // Загружает конфигурационный файл, обрабатывая URL-параметры и ошибки
+    async startLoadingData() {
+        const getParams = () => {
+            const p = new URLSearchParams(window.location.search).get('conf');
+            return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
+        };
+
+        const fetchFile = async (f) => {
+            const r = await fetch(f);
+            if (!r.ok) throw new Error(`Файл не найден (статус: ${r.status})`);
+            return await r.json();
+        };
+
+        const fileName = getParams();
+        try {
+            return await fetchFile(fileName);
+        } catch (e) {
+            // Резервный вариант, если указанный файл не найден
+            if (fileName !== 'tags.json') {
+                try {
+                    return await fetchFile('tags.json');
+                } catch (fallbackErr) {
+                    throw e;
+                }
+            }
+            throw e;
+        }
     }
 
     async initialize() {
         try {
+            // Кэширует ссылки на все DOM-элементы
             this.cacheDOM();
-            if (await this.loadData()) {
-                this.showUI();
-                this.initCategories();
-                this.setupEvents();
-                this.render();
-                this.parseInput(this.dom.input.value);
-                this.updateUI();
+            // Устанавливает обработчики для статичных элементов
+            this.setupStaticEvents();
+
+            // Ожидает завершения загрузки данных
+            try {
+                this.tagsData = await this.dataPromise;
+            } catch (e) {
+                this.handleLoadError(e);
+                return;
             }
+
+            // Настройка приложения после загрузки данных
+            this.showUI();
+            // Инициализирует внутренние структуры данных (Map'ы и индексы)
+            this.initCategories();
+            // Рендерит HTML-структуру тегов и навигации
+            this.render();
+
+            // Парсит текущее значение в поле ввода (если оно есть)
+            if (this.dom.input.value) {
+                this.parseInput(this.dom.input.value, true);
+            }
+
+            // Обновляет состояние всех кнопок и элементов
+            this.updateFullState();
         } catch (e) {
             console.error(e);
             if (!this.dom.error.classList.contains('util-hidden')) return;
@@ -36,6 +88,18 @@ class TagsManager {
         }
     }
 
+    // Обрабатывает и отображает ошибки при загрузке конфигурационного файла
+    handleLoadError(e) {
+        const fileName = new URLSearchParams(window.location.search).get('conf') || 'tags.json';
+        const isJsonError = e.message.includes('JSON');
+        const errorTitle = isJsonError ? 'Ошибка в формате JSON' : 'Файл конфигурации не найден';
+        const errorText = isJsonError
+            ? `Файл **${fileName}** содержит ошибку формата: ${e.message}`
+            : `Файл **${fileName}** не найден или недоступен.`;
+        this.error(errorText, errorTitle);
+    }
+
+    // Кэширует ссылки на все DOM-элементы по ID
     cacheDOM() {
         const id = x => document.getElementById(x);
         this.dom = {
@@ -67,6 +131,7 @@ class TagsManager {
         };
     }
 
+    // Вспомогательная функция для создания DOM-элементов
     el(tag, cls = '', text = '', attrs = {}) {
         const d = document.createElement(tag);
         if (cls) d.className = cls;
@@ -75,45 +140,7 @@ class TagsManager {
         return d;
     }
 
-    async loadData() {
-        const getParams = () => {
-            const p = new URLSearchParams(window.location.search).get('conf');
-            return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
-        };
-
-        const fetchFile = async (f) => {
-            const r = await fetch(f);
-            if (!r.ok) throw new Error(`Файл не найден (статус: ${r.status})`);
-            return await r.json();
-        };
-
-        const fileName = getParams();
-        try {
-            this.tagsData = await fetchFile(fileName);
-            return true;
-        } catch (e) {
-            console.warn(`Error loading ${fileName}: ${e.message}`);
-            // Попытка загрузить дефолтный файл, если запрошенный не найден
-            if (fileName !== 'tags.json') {
-                try {
-                    this.tagsData = await fetchFile('tags.json');
-                    return true;
-                } catch (fallbackErr) {
-                    console.error(`Fallback failed: ${fallbackErr.message}`);
-                }
-            }
-
-            const isJsonError = e.message.includes('JSON');
-            const errorTitle = isJsonError ? 'Ошибка в формате JSON' : 'Файл конфигурации не найден';
-            const errorText = isJsonError
-                ? `Файл **${fileName}** содержит ошибку формата: ${e.message}`
-                : `Файл **${fileName}** не найден или недоступен.`;
-
-            this.error(errorText, errorTitle);
-            return false;
-        }
-    }
-
+    // Инициализирует внутренние структуры данных из tagsData
     initCategories() {
         this.categories.clear();
         this.allTagsInOrder = [];
@@ -150,17 +177,15 @@ class TagsManager {
                         knownAs: t.knownAs || []
                     });
 
-                    // Глобальная индексация
+                    // Индексация тегов для быстрого поиска
                     const tagInfo = { name, mainName: main, category: cat.name, catData, tagConfig: t };
                     this.allTagsInOrder.push(tagInfo);
                     const currentIndex = this.allTagsInOrder.length - 1;
                     const lowerName = name.toLowerCase();
 
-                    // 1. Индекс по имени
                     if (!this.tagIndexMap.has(lowerName)) this.tagIndexMap.set(lowerName, []);
                     this.tagIndexMap.get(lowerName).push(currentIndex);
 
-                    // 2. Индекс по алиасам (knownAs)
                     if (t.knownAs && Array.isArray(t.knownAs)) {
                         t.knownAs.forEach(alias => {
                             const cleanAlias = alias.trim().toLowerCase();
@@ -169,7 +194,6 @@ class TagsManager {
                         });
                     }
 
-                    // 3. Индекс альтернативных комбинаций имен
                     if (names.length === 1 && name.includes('/')) {
                         this.generateAltNames(name).forEach(altName => {
                             const lowerAlt = altName.toLowerCase();
@@ -183,6 +207,7 @@ class TagsManager {
         });
     }
 
+    // Генерирует альтернативные имена для тегов с косой чертой (например, "A/B C" -> "A C", "B C")
     generateAltNames(name) {
         const parts = name.split(/\s+/).map(p => p.split('/').filter(Boolean));
         const combine = (arr, index = 0, current = []) => {
@@ -196,25 +221,31 @@ class TagsManager {
         return combine(parts).filter(Boolean);
     }
 
-    setupEvents() {
-        const { input, limitBox, dupBox, pinBtn, main, header, container, themeToggleBtn, unrecWarn } = this.dom;
+    // Устанавливает обработчики событий для основных элементов интерфейса
+    setupStaticEvents() {
+        const { input, limitBox, dupBox, pinBtn, main, header, container, themeToggleBtn, unrecWarn, refToggleBtn, refContent } = this.dom;
 
+        // Обработка ввода текста. Парсит входную строку и обновляет интерфейс
         input.addEventListener('input', () => {
             unrecWarn.classList.add('util-hidden');
-            this.parseInput(input.value);
-            this.updateUI();
+            this.parseInput(input.value, true);
+            this.updateUI(false);
         });
 
-        limitBox.addEventListener('change', () => this.updateUI());
+        // Обработка чекбоксов лимита и дубликатов
+        limitBox.addEventListener('change', () => {
+            this.updateUI(true);
+        });
         dupBox.addEventListener('change', () => this.updateAlt());
 
-        const { refToggleBtn, refContent } = this.dom;
+        // Переключение раздела справки
         refToggleBtn.addEventListener('click', () => {
             const isHidden = refContent.classList.toggle('util-hidden');
             refToggleBtn.textContent = isHidden ? 'Важная информация' : 'Скрыть';
             if (this.isHeaderPinned) this.updateHeaderOffset();
         });
 
+        // Делегирование клика по кнопкам тегов
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.tag-button');
             if (!btn) return;
@@ -222,6 +253,7 @@ class TagsManager {
             this.handleTagClick(catName, btn.textContent);
         });
 
+        // Переключение состояния закрепления хедера
         pinBtn.addEventListener('click', () => {
             this.isHeaderPinned = !this.isHeaderPinned;
             this.updatePinState();
@@ -231,6 +263,7 @@ class TagsManager {
         const savedPinned = localStorage.getItem('headerPinned');
         this.isHeaderPinned = savedPinned !== null ? JSON.parse(savedPinned) : true;
 
+        // Переключение темы
         themeToggleBtn.addEventListener('click', () => this.toggleTheme());
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) {
@@ -238,23 +271,34 @@ class TagsManager {
             this.applyTheme();
         }
 
-        const updateLayout = () => {
-            this.updateNavVis();
-            this.updateScrollHints();
-            if (this.isHeaderPinned) this.updateHeaderOffset();
+        // Оптимизированные обработчики скролла и изменения размера окна
+        const updateLayoutDebounced = () => {
+            if (!this.scrollTicking) {
+                window.requestAnimationFrame(() => {
+                    this.updateNavVis();
+                    this.updateScrollHints();
+                    if (this.isHeaderPinned) this.updateHeaderOffset();
+                    this.scrollTicking = false;
+                });
+                this.scrollTicking = true;
+            }
         };
 
-        window.addEventListener('resize', updateLayout);
-        window.addEventListener('scroll', updateLayout);
-        window.addEventListener('load', () => setTimeout(updateLayout, 100));
+        window.addEventListener('resize', updateLayoutDebounced);
+        window.addEventListener('scroll', updateLayoutDebounced);
 
+        // Обработка клика вне основных контейнеров (для скролла наверх)
         document.body.addEventListener('click', (e) => {
-            if (!main.contains(e.target) && !header.contains(e.target)) window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (!main.contains(e.target) && !header.contains(e.target) && !e.target.closest('.scroll-hint')) {
+                if (window.scrollY > 300) window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
 
+        // Обработка клика по подсказкам скролла
         this.dom.scrollHints.forEach(h => h.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' })));
     }
 
+    // Генерирует HTML-структуру категорий и кнопок тегов
     render() {
         const { container, navList, refSection, refContent, refToggleBtn } = this.dom;
         container.innerHTML = '';
@@ -272,7 +316,7 @@ class TagsManager {
 
         this.categories.forEach((catData, catName) => {
             const catDiv = this.el('div', 'category');
-            catData.dom = catDiv;
+            catData.dom = catDiv; // Сохранение ссылки на DOM-элемент категории
 
             const titleRow = this.el('div', 'category-title-container');
             const left = this.el('div', 'category-title-left');
@@ -321,12 +365,14 @@ class TagsManager {
         this.updatePinState();
     }
 
+    // Создает кнопку тега с заданными параметрами
     createBtn(tag) {
         return this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
             'data-tooltip': tag.description || ''
         });
     }
 
+    // Переключает и сохраняет состояние темы (Авто/Темная/Светлая)
     toggleTheme() {
         const states = ['auto', 'dark', 'light'];
         this.themeState = states[(states.indexOf(this.themeState) + 1) % states.length];
@@ -334,6 +380,7 @@ class TagsManager {
         localStorage.setItem('theme', this.themeState);
     }
 
+    // Применяет выбранную тему к элементу <html> и обновляет иконки
     applyTheme() {
         const html = document.documentElement;
         this.themeState === 'auto' ? html.removeAttribute('data-theme') : html.setAttribute('data-theme', this.themeState);
@@ -342,10 +389,10 @@ class TagsManager {
         this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
     }
 
+    // Группирует теги в подгруппы для рендеринга
     groupTags(catData) {
         const subs = new Map();
         const processed = new Set();
-
         catData.variantGroups.forEach((vars, main) => {
             const tag = catData.tags.get(vars[0]);
             if (!tag) return;
@@ -356,7 +403,6 @@ class TagsManager {
             });
             processed.add(main);
         });
-
         catData.tags.forEach(tag => {
             if (tag.isVariant || processed.has(tag.mainName)) return;
             const s = tag.subgroup || '';
@@ -366,10 +412,18 @@ class TagsManager {
         return subs;
     }
 
+    // Обрабатывает клик по кнопке тега
     handleTagClick(catName, tagName) {
         const cat = this.categories.get(catName);
         const tag = cat.tags.get(tagName);
         const main = tag.mainName;
+
+        // Создает снэпшот состояния для возможности отката
+        const snapshot = {
+            selectedTags: new Set(cat.selectedTags),
+            orderedTags: [...cat.orderedTags],
+            selectedVariants: new Map(cat.selectedVariants)
+        };
 
         const setSel = (v) => {
             cat.selectedTags.add(main);
@@ -382,13 +436,15 @@ class TagsManager {
             cat.selectedVariants.delete(main);
         };
 
+        // Применяет логику выбора (single, ordered, multiple)
         if (cat.type === 'single') {
             const isActive = cat.selectedTags.has(main);
             cat.selectedTags.forEach(m => {
-                cat.selectedTags.delete(m);
                 this.selectedTags.delete(m);
-                cat.selectedVariants.delete(m);
             });
+            cat.selectedTags.clear();
+            cat.selectedVariants.clear();
+
             if (!isActive) setSel(tagName);
         } else if (cat.type === 'ordered') {
             if (cat.selectedTags.has(main)) {
@@ -398,7 +454,6 @@ class TagsManager {
                 cat.orderedTags.push(main);
                 setSel(tagName);
             }
-            // Сортировка: Main tags имеют приоритет
             cat.orderedTags.sort((a, b) => {
                 const isAm = cat.tags.get(a).isMainTag, isBm = cat.tags.get(b).isMainTag;
                 return (isAm === isBm) ? 0 : isAm ? -1 : 1;
@@ -408,10 +463,38 @@ class TagsManager {
             if (cat.selectedTags.has(main) && curVar === tagName) delSel();
             else setSel(tagName);
         }
-        this.updateUI();
+
+        // Предварительная проверка лимита символов
+        const newStr = this.generateOutputString();
+        const limit = this.tagsData.characterLimit;
+        const isLim = this.dom.limitBox.checked;
+
+        if (isLim && newStr.length > limit) {
+            // Откат состояния, если лимит превышен
+            cat.selectedTags.forEach(m => this.selectedTags.delete(m));
+
+            cat.selectedTags = snapshot.selectedTags;
+            cat.orderedTags = snapshot.orderedTags;
+            cat.selectedVariants = snapshot.selectedVariants;
+
+            // Восстановление глобальных ссылок
+            cat.selectedTags.forEach(m => this.selectedTags.set(m, catName));
+
+            // Визуальное уведомление об ошибке
+            this.flashLimitError();
+            return;
+        }
+
+        // Обновление интерфейса
+        this.dom.input.value = newStr;
+        this.updateLimitDisplay(newStr.length);
+        this.updateCategoryDOM(cat); // Обновление только одной категории
+        this.updateAlt();
     }
 
-    parseInput(str) {
+    // Парсит входную строку из поля ввода, обновляя внутреннее состояние
+    parseInput(str, updateInputValue = true) {
+        // Очистка предыдущего состояния
         this.selectedTags.clear();
         this.categories.forEach(c => {
             c.selectedTags.clear(); c.orderedTags = []; c.selectedVariants.clear();
@@ -419,12 +502,11 @@ class TagsManager {
         this.unrecognizedTags = [];
 
         const rawTags = str.split(this.tagsData.separator).map(t => t.trim()).filter(Boolean);
-        if (!rawTags.length) return;
 
-        const recognizedIndices = new Set();
         let lastIdx = -1;
+        const recognizedIndices = new Set();
 
-        // Хелпер для кольцевого поиска индекса
+        // Поиск следующего тега по "кольцевому" алгоритму
         const findRingIndex = (indices) => {
             if (!indices) return -1;
             const sorted = [...indices].sort((a, b) => a - b);
@@ -432,7 +514,7 @@ class TagsManager {
             return after !== undefined ? after : sorted.find(i => i <= lastIdx);
         };
 
-        // Хелпер для поиска в картах
+        // Поиск тега по прямому имени, алиасу или альтернативному имени
         const findTagInMaps = (term) => {
             const maps = [this.tagIndexMap, this.knownAsMap, this.altTagSearchMap];
             for (const map of maps) {
@@ -454,6 +536,7 @@ class TagsManager {
                 const main = info.mainName;
 
                 if (cat.type === 'single') {
+                    cat.selectedTags.forEach(m => this.selectedTags.delete(m));
                     cat.selectedTags.clear();
                     cat.selectedTags.add(main);
                 } else {
@@ -469,10 +552,23 @@ class TagsManager {
         });
 
         this.unrecognizedTags = rawTags.filter((_, index) => !recognizedIndices.has(index));
+
+        // Перезаписывает поле ввода форматированной строкой
+        if (updateInputValue) {
+            this.dom.input.value = this.generateOutputString();
+        }
     }
 
-    // Хелпер для итерации по выбранным тегам с учетом типа категории
+    // Генерирует итоговую строку тегов из внутреннего состояния
+    generateOutputString() {
+        const res = [];
+        this.processSelectedTags((name) => res.push(name));
+        return res.join(this.tagsData.separator);
+    }
+
+    // Итератор по выбранным тегам с учетом порядка и типа категории
     processSelectedTags(callback) {
+        // Порядок категорий берется из конфигурации
         this.tagsData.categories.forEach(cfg => {
             const cat = this.categories.get(cfg.name);
             const run = (main) => {
@@ -494,23 +590,15 @@ class TagsManager {
         });
     }
 
-    updateUI() {
-        const res = [];
-        this.processSelectedTags((name) => res.push(name));
-
-        const resStr = res.join(this.tagsData.separator);
-        const limit = this.tagsData.characterLimit;
-        const isLim = this.dom.limitBox.checked;
-
-        if (isLim && resStr.length > limit) {
-            // Если превышен лимит, перепарсиваем текущий инпут (фактически отмена последнего действия)
-            this.parseInput(this.dom.input.value);
-        } else {
-            this.dom.input.value = resStr;
+    // Обновляет весь пользовательский интерфейс (поле ввода, кнопки, предупреждения)
+    updateUI(updateInputFromState = true) {
+        if (updateInputFromState) {
+            const str = this.generateOutputString();
+            this.dom.input.value = str;
         }
 
-        this.dom.limitDisp.textContent = `${resStr.length}/${limit}`;
-        this.dom.limitDisp.classList.toggle('exceeded', isLim && resStr.length > limit);
+        const len = this.dom.input.value.length;
+        this.updateLimitDisplay(len);
 
         const { unrecWarn } = this.dom;
         if (this.unrecognizedTags.length > 0) {
@@ -520,47 +608,99 @@ class TagsManager {
             unrecWarn.classList.add('util-hidden');
         }
 
-        this.updateButtonsState();
+        this.updateFullState(); // Обновляет все кнопки
         this.updateAlt();
     }
 
-    updateButtonsState() {
+    // Обновляет индикатор лимита символов
+    updateLimitDisplay(len) {
+        const limit = this.tagsData.characterLimit;
+        const isLim = this.dom.limitBox.checked;
+        this.dom.limitDisp.textContent = `${len}/${limit}`;
+        this.dom.limitDisp.classList.toggle('exceeded', isLim && len > limit);
+    }
+
+    // Визуально сигнализирует о превышении лимита символов
+    flashLimitError() {
+        this.dom.limitDisp.classList.add('exceeded');
+        const originalText = this.dom.limitDisp.textContent;
+        this.dom.limitDisp.textContent = "ЛИМИТ!";
+        setTimeout(() => {
+            this.dom.limitDisp.textContent = originalText;
+            const len = this.dom.input.value.length;
+            const limit = this.tagsData.characterLimit;
+            this.dom.limitDisp.classList.toggle('exceeded', this.dom.limitBox.checked && len > limit);
+        }, 800);
+    }
+
+    // Обновляет визуальное состояние кнопок только для одной категории
+    updateCategoryDOM(cat) {
+        if (!cat.dom) return;
+        this.updateButtonsInContainer(cat.dom, cat);
+    }
+
+    // Обновляет все кнопки во всех категориях
+    updateFullState() {
         this.categories.forEach(cat => {
-            if (!cat.dom) return;
-            const btns = cat.dom.querySelectorAll('.tag-button');
-            btns.forEach(btn => {
-                const tName = btn.textContent;
-                const tag = cat.tags.get(tName);
-                if (!tag) return;
-
-                const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tName;
-                btn.classList.toggle('selected', sel);
-
-                if (cat.type === 'ordered' && sel) {
-                    btn.classList.add('ordered');
-                    btn.setAttribute('data-order', cat.orderedTags.indexOf(tag.mainName) + 1);
-                } else {
-                    btn.classList.remove('ordered');
-                    btn.removeAttribute('data-order');
-                }
-            });
-
-            const warn = cat.dom.querySelector('.category-warning');
-            let showWarn = false;
-            let txt = '';
-
-            if (cat.requirement === 'atLeastOne') {
-                showWarn = cat.selectedTags.size === 0;
-                txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один тег';
-            } else if (cat.requirement === 'atLeastOneMain') {
-                showWarn = ![...cat.selectedTags].some(m => cat.tags.get(m).isMainTag);
-                txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один главный тег';
-            }
-            warn.textContent = txt;
-            warn.classList.toggle('util-hidden', !showWarn);
+            if (cat.dom) this.updateButtonsInContainer(cat.dom, cat);
         });
     }
 
+    // Основная функция для обновления классов кнопок и предупреждений внутри контейнера категории
+    updateButtonsInContainer(container, cat) {
+        const btns = container.querySelectorAll('.tag-button');
+        btns.forEach(btn => {
+            const tName = btn.textContent;
+            const tag = cat.tags.get(tName);
+            if (!tag) return;
+
+            const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tName;
+
+            // Установка класса 'selected'
+            if (btn.classList.contains('selected') !== sel) {
+                btn.classList.toggle('selected', sel);
+            }
+
+            // Установка порядка для ordered-категорий
+            if (cat.type === 'ordered') {
+                if (sel) {
+                    const order = cat.orderedTags.indexOf(tag.mainName) + 1;
+                    if (btn.getAttribute('data-order') != order) {
+                        btn.classList.add('ordered');
+                        btn.setAttribute('data-order', order);
+                    }
+                } else {
+                    if (btn.classList.contains('ordered')) {
+                        btn.classList.remove('ordered');
+                        btn.removeAttribute('data-order');
+                    }
+                }
+            } else {
+                if (btn.classList.contains('ordered')) {
+                    btn.classList.remove('ordered');
+                    btn.removeAttribute('data-order');
+                }
+            }
+        });
+
+        // Логика предупреждений о требованиях категории
+        const warn = container.querySelector('.category-warning');
+        let showWarn = false;
+        let txt = '';
+
+        if (cat.requirement === 'atLeastOne') {
+            showWarn = cat.selectedTags.size === 0;
+            txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один тег';
+        } else if (cat.requirement === 'atLeastOneMain') {
+            showWarn = ![...cat.selectedTags].some(m => cat.tags.get(m).isMainTag);
+            txt = cat.overrideRequirementText || 'Необходимо выбрать хотя бы один главный тег';
+        }
+
+        if (warn.textContent !== txt) warn.textContent = txt;
+        warn.classList.toggle('util-hidden', !showWarn);
+    }
+
+    // Генерирует и отображает строку альтернативных тегов
     updateAlt() {
         const alts = [];
         const seen = new Set();
@@ -568,6 +708,7 @@ class TagsManager {
         this.processSelectedTags((_, tagObj) => {
             if (tagObj.alternative) {
                 const norm = tagObj.alternative.trim().toLowerCase().replace(/\s+/g, ' ');
+                // Проверка на дубликаты
                 if (!this.dom.dupBox.checked || !seen.has(norm)) {
                     alts.push(tagObj.alternative);
                     seen.add(norm);
@@ -576,11 +717,21 @@ class TagsManager {
         });
 
         const s = alts.join(this.tagsData.alternativeSeparator);
-        this.dom.altSection.classList.toggle('util-hidden', !s);
-        this.dom.altOut.value = s;
-        if (this.isHeaderPinned) setTimeout(() => this.updateHeaderOffset(), 50);
+
+        // Обновление DOM только при изменении значения
+        if (this.dom.altOut.value !== s) {
+            this.dom.altSection.classList.toggle('util-hidden', !s);
+            this.dom.altOut.value = s;
+            if (this.isHeaderPinned) {
+                // Обновление смещения хедера после изменения размеров секции
+                if (!this.scrollTicking) {
+                    window.requestAnimationFrame(() => this.updateHeaderOffset());
+                }
+            }
+        }
     }
 
+    // Плавно прокручивает страницу до указанной категории
     scrollToCat(name) {
         const el = this.categories.get(name)?.dom;
         if (!el) return;
@@ -589,12 +740,17 @@ class TagsManager {
         window.scrollTo({ top, behavior: 'smooth' });
     }
 
+    // Устанавливает отступ для основного контента, учитывая высоту закрепленного хедера
     updateHeaderOffset() {
         if (!this.isHeaderPinned) { this.dom.main.style.paddingTop = ''; return; }
         const h = this.dom.header.offsetHeight;
-        this.dom.main.style.paddingTop = `${h + 45}px`;
+        const target = `${h + 45}px`;
+        if (this.dom.main.style.paddingTop !== target) {
+            this.dom.main.style.paddingTop = target;
+        }
     }
 
+    // Обновляет визуальное состояние кнопки закрепления и самого хедера
     updatePinState() {
         const { pinBtn, header, main } = this.dom;
         const act = this.isHeaderPinned;
@@ -607,22 +763,26 @@ class TagsManager {
         this.updateHeaderOffset();
     }
 
+    // Показывает/скрывает навигацию по категориям в зависимости от необходимости
     updateNavVis() {
         const need = this.dom.main.scrollHeight > window.innerHeight || this.isHeaderPinned;
         this.dom.nav.classList.toggle('util-hidden', !need);
     }
 
+    // Показывает/скрывает подсказки скролла наверх
     updateScrollHints() {
         const vis = window.innerWidth > this.dom.main.offsetWidth + 200 && window.scrollY > 100;
         this.dom.scrollHints.forEach(h => h.classList.toggle('visible', vis));
     }
 
+    // Показывает основной интерфейс приложения
     showUI() {
         this.dom.loading.classList.add('util-hidden');
         this.dom.error.classList.add('util-hidden');
         this.dom.app.classList.remove('util-hidden');
     }
 
+    // Отображает сообщение об ошибке
     error(detailText, title = 'Ошибка загрузки конфигурации') {
         this.dom.loading.classList.add('util-hidden');
         this.dom.errTitle.textContent = title;
@@ -632,4 +792,5 @@ class TagsManager {
     }
 }
 
+// Инициализация при полной загрузке DOM
 document.addEventListener('DOMContentLoaded', () => new TagsManager());
