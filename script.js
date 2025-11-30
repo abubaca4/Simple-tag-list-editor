@@ -23,109 +23,85 @@ class TagsManager {
         this.initialize();
     }
 
-    // Загружает конфигурационный файл с применением политики кеширования
+    // Вспомогательная функция для работы с метаданными кеша в localStorage
+    getCacheMetadata(fileName, action = 'get', data = {}) {
+        const key = `tagsManagerCacheMeta:${fileName}`;
+        if (action === 'get') {
+            try {
+                return JSON.parse(localStorage.getItem(key)) || {};
+            } catch (e) {
+                return {};
+            }
+        } else if (action === 'set') {
+            const currentData = this.getCacheMetadata(fileName);
+            const newData = {
+                cacheMaxAgeHours: data.cacheMaxAgeHours || currentData.cacheMaxAgeHours || 24,
+                lastSuccessfulFetchTime: data.newContent ? Date.now() : currentData.lastSuccessfulFetchTime || 0,
+            };
+            localStorage.setItem(key, JSON.stringify(newData));
+            return newData;
+        }
+        return {};
+    }
+
+    // Загружает конфигурационный файл, обрабатывая URL-параметры, кеширование и ошибки
     async startLoadingData() {
-        // Получает имя файла из параметров URL
         const getParams = () => {
             const p = new URLSearchParams(window.location.search).get('conf');
             return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
         };
 
+        const fetchFile = async (f, fetchMode) => {
+            const options = {
+                cache: fetchMode // 'default' (использует кеш, если свежий) или 'no-cache' (игнорирует кеш)
+            };
+
+            const r = await fetch(f, options);
+            if (!r.ok) {
+                // Если статус 404/500, возвращаем ошибку
+                throw new Error(`Файл не найден (статус: ${r.status})`);
+            }
+
+            const json = await r.json();
+
+            // Обновляем метаданные после успешного получения (статус 200)
+            const cacheMaxAgeHours = json.cacheMaxAgeHours;
+            this.getCacheMetadata(f, 'set', { cacheMaxAgeHours, newContent: true });
+
+            return json;
+        };
+
         const fileName = getParams();
+        let cacheMeta = this.getCacheMetadata(fileName);
+        const now = Date.now();
+
+        // Расчет требуемого времени обновления
+        const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24; // По умолчанию 24 часа
+        const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
+        const isCacheExpired = cacheMeta.lastSuccessfulFetchTime === 0 || (now - cacheMeta.lastSuccessfulFetchTime) > maxAgeMs;
+
+        // Определяем режим запроса
+        // 'no-cache' заставит браузер обратиться к серверу (для проверки ETag/Last-Modified или получения нового файла).
+        // 'default' позволит браузеру использовать кеш, если он свежий по заголовкам Cache-Control/Expires.
+        const fetchMode = isCacheExpired ? 'no-cache' : 'default';
 
         try {
-            return await loadJsonWithCache(fileName);
+            return await fetchFile(fileName, fetchMode);
         } catch (e) {
-            // Пытается вернуть tags.json как резервный вариант
+            // Логика резервного варианта 'tags.json'
             if (fileName !== 'tags.json') {
                 try {
-                    return await loadJsonWithCache('tags.json');
+                    // Пытаемся загрузить резервный 'tags.json' с принудительной проверкой,
+                    // чтобы убедиться, что он не устарел, если его будем использовать.
+                    return await fetchFile('tags.json', 'no-cache');
                 } catch (fallbackErr) {
+                    // Если оба файла не найдены/ошибочны, пробрасываем исходную ошибку
                     throw e;
                 }
             }
+            // Пробрасываем ошибку, если исходный файл не 'tags.json' и не найден
             throw e;
         }
-    }
-
-    // Загружает JSON с расширенной кеш-логикой и хранит метаданные в localStorage
-    async loadJsonWithCache(fileName) {
-        // Формирует ключ для localStorage
-        const storageKey = `jsoncache:${fileName}`;
-
-        // Получает текущее состояние кеша
-        const now = Date.now();
-        let meta;
-        try {
-            meta = JSON.parse(localStorage.getItem(storageKey) || 'null') || {};
-        } catch (e) {
-            meta = {};
-        }
-
-        // Значение интервала обновления (в часах): при отсутствии — 24
-        const storedInterval = typeof meta.refreshIntervalHours === 'number' ? meta.refreshIntervalHours : null;
-        const defaultIntervalHours = 24;
-        const effectiveIntervalHours = storedInterval || defaultIntervalHours;
-
-        // Определяет надо ли принудительно обновлять файл
-        const lastTs = typeof meta.timestamp === 'number' ? meta.timestamp : 0;
-        const millisSince = now - lastTs;
-        const needsForce = !lastTs || millisSince >= effectiveIntervalHours * 3600 * 1000;
-
-        // Готовит заголовки условной загрузки
-        const headers = {};
-        if (meta.eTag) headers['If-None-Match'] = meta.eTag;
-        if (meta.lastModified) headers['If-Modified-Since'] = meta.lastModified;
-
-        // Формирует опции fetch (единственный fetch в коде)
-        const fetchOptions = {
-            method: 'GET',
-            headers,
-        };
-        if (needsForce) fetchOptions.cache = 'no-cache';
-
-        // Выполняет запрос
-        const resp = await fetch(fileName, fetchOptions);
-
-        // Обрабатывает 304 Not Modified — обновляет временную метку и возвращает закешированный контент
-        if (resp.status === 304) {
-            meta.timestamp = now;
-            try { localStorage.setItem(storageKey, JSON.stringify(meta)); } catch (e) { /* ignore storage errors */ }
-            if (meta.content) {
-                try { return JSON.parse(meta.content); } catch (e) { /* fallthrough to fetch fresh below */ }
-            }
-            // Если нет сохранённого content — продолжим как если бы получили 200 (попробуем получить тело)
-        }
-
-        // Обрабатывает успешный ответ и парсит JSON
-        if (resp.ok) {
-            const json = await resp.json();
-
-            // Читает интервал обновления из тела JSON (если задан) или использует предыдущий/дефолт
-            const declaredInterval = (json && typeof json.refreshIntervalHours === 'number') ? json.refreshIntervalHours : null;
-            const newIntervalHours = declaredInterval !== null ? declaredInterval : (storedInterval || defaultIntervalHours);
-
-            // Считывает заголовки ETag и Last-Modified
-            const respETag = resp.headers.get('ETag') || null;
-            const respLastMod = resp.headers.get('Last-Modified') || null;
-
-            // Обновляет метаданные
-            meta.refreshIntervalHours = newIntervalHours;
-            if (respETag) meta.eTag = respETag;
-            if (respLastMod) meta.lastModified = respLastMod;
-            meta.timestamp = now;
-
-            // Сохраняет тело для возможности вернуть его при 304
-            try { meta.content = JSON.stringify(json); } catch (e) { /* ignore serialization errors */ }
-
-            // Пишет meta в localStorage
-            try { localStorage.setItem(storageKey, JSON.stringify(meta)); } catch (e) { /* ignore storage errors */ }
-
-            return json;
-        }
-
-        // Обрабатывает ошибки (например 404)
-        throw new Error(`Файл не найден или недоступен (статус: ${resp.status})`);
     }
 
     async initialize() {
