@@ -23,21 +23,23 @@ class TagsManager {
         this.initialize();
     }
 
-    // Загружает конфигурационный файл, обрабатывая URL-параметры и ошибки
+    // Загружает конфигурационный файл с применением политики кеширования
     async startLoadingData() {
+        // Получает имя файла из параметров URL
         const getParams = () => {
             const p = new URLSearchParams(window.location.search).get('conf');
             return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
         };
 
         const fileName = getParams();
+
         try {
-            return await this.fetchWithCache(fileName);
+            return await loadJsonWithCache(fileName);
         } catch (e) {
-            // Резервный вариант, если указанный файл не найден
+            // Пытается вернуть tags.json как резервный вариант
             if (fileName !== 'tags.json') {
                 try {
-                    return await this.fetchWithCache('tags.json');
+                    return await loadJsonWithCache('tags.json');
                 } catch (fallbackErr) {
                     throw e;
                 }
@@ -46,44 +48,84 @@ class TagsManager {
         }
     }
 
-    async fetchWithCache(url) {
-        const cacheKey = `tagsConfigCache_${url}`;
-        const cached = localStorage.getItem(cacheKey);
-        let cacheInfo = cached ? JSON.parse(cached) : null;
+    // Загружает JSON с расширенной кеш-логикой и хранит метаданные в localStorage
+    async loadJsonWithCache(fileName) {
+        // Формирует ключ для localStorage
+        const storageKey = `jsoncache:${fileName}`;
 
-        // Определяем параметры кеширования
+        // Получает текущее состояние кеша
         const now = Date.now();
-        const defaultMaxAge = 24; // часов
-        const cacheMaxAge = (cacheInfo?.maxAgeHours || defaultMaxAge) * 60 * 60 * 1000;
-        const shouldForceRefresh = !cacheInfo || (now - cacheInfo.lastUpdated) > cacheMaxAge;
-
-        // Формируем заголовки запроса
-        const headers = {};
-        if (cacheInfo?.etag) headers['If-None-Match'] = cacheInfo.etag;
-        if (cacheInfo?.lastModified) headers['If-Modified-Since'] = cacheInfo.lastModified;
-
-        const options = {
-            headers,
-            cache: shouldForceRefresh ? 'no-cache' : 'default'
-        };
-
-        const response = await fetch(url, options);
-
-        if (!response.ok) {
-            throw new Error(`Файл не найден (статус: ${response.status})`);
+        let meta;
+        try {
+            meta = JSON.parse(localStorage.getItem(storageKey) || 'null') || {};
+        } catch (e) {
+            meta = {};
         }
 
-        // Обновляем информацию о кеше при успешном ответе
-        const data = await response.json();
-        const newCacheInfo = {
-            etag: response.headers.get('ETag'),
-            lastModified: response.headers.get('Last-Modified'),
-            lastUpdated: now,
-            maxAgeHours: data.cacheMaxAgeHours || defaultMaxAge
-        };
+        // Значение интервала обновления (в часах): при отсутствии — 24
+        const storedInterval = typeof meta.refreshIntervalHours === 'number' ? meta.refreshIntervalHours : null;
+        const defaultIntervalHours = 24;
+        const effectiveIntervalHours = storedInterval || defaultIntervalHours;
 
-        localStorage.setItem(cacheKey, JSON.stringify(newCacheInfo));
-        return data;
+        // Определяет надо ли принудительно обновлять файл
+        const lastTs = typeof meta.timestamp === 'number' ? meta.timestamp : 0;
+        const millisSince = now - lastTs;
+        const needsForce = !lastTs || millisSince >= effectiveIntervalHours * 3600 * 1000;
+
+        // Готовит заголовки условной загрузки
+        const headers = {};
+        if (meta.eTag) headers['If-None-Match'] = meta.eTag;
+        if (meta.lastModified) headers['If-Modified-Since'] = meta.lastModified;
+
+        // Формирует опции fetch (единственный fetch в коде)
+        const fetchOptions = {
+            method: 'GET',
+            headers,
+        };
+        if (needsForce) fetchOptions.cache = 'no-cache';
+
+        // Выполняет запрос
+        const resp = await fetch(fileName, fetchOptions);
+
+        // Обрабатывает 304 Not Modified — обновляет временную метку и возвращает закешированный контент
+        if (resp.status === 304) {
+            meta.timestamp = now;
+            try { localStorage.setItem(storageKey, JSON.stringify(meta)); } catch (e) { /* ignore storage errors */ }
+            if (meta.content) {
+                try { return JSON.parse(meta.content); } catch (e) { /* fallthrough to fetch fresh below */ }
+            }
+            // Если нет сохранённого content — продолжим как если бы получили 200 (попробуем получить тело)
+        }
+
+        // Обрабатывает успешный ответ и парсит JSON
+        if (resp.ok) {
+            const json = await resp.json();
+
+            // Читает интервал обновления из тела JSON (если задан) или использует предыдущий/дефолт
+            const declaredInterval = (json && typeof json.refreshIntervalHours === 'number') ? json.refreshIntervalHours : null;
+            const newIntervalHours = declaredInterval !== null ? declaredInterval : (storedInterval || defaultIntervalHours);
+
+            // Считывает заголовки ETag и Last-Modified
+            const respETag = resp.headers.get('ETag') || null;
+            const respLastMod = resp.headers.get('Last-Modified') || null;
+
+            // Обновляет метаданные
+            meta.refreshIntervalHours = newIntervalHours;
+            if (respETag) meta.eTag = respETag;
+            if (respLastMod) meta.lastModified = respLastMod;
+            meta.timestamp = now;
+
+            // Сохраняет тело для возможности вернуть его при 304
+            try { meta.content = JSON.stringify(json); } catch (e) { /* ignore serialization errors */ }
+
+            // Пишет meta в localStorage
+            try { localStorage.setItem(storageKey, JSON.stringify(meta)); } catch (e) { /* ignore storage errors */ }
+
+            return json;
+        }
+
+        // Обрабатывает ошибки (например 404)
+        throw new Error(`Файл не найден или недоступен (статус: ${resp.status})`);
     }
 
     async initialize() {
