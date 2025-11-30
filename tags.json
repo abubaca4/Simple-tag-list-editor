@@ -3,6 +3,7 @@
   "alternativeSeparator": " | ",
   "reference": "<p><strong>Добро пожаловать в руководство по тегам!</strong></p><ul><li>Здесь вы найдете информацию о правилах выбора тегов.</li><li>HTML-теги, такие как <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code> и <code>&lt;ul&gt;</code>, поддерживаются.</li></ul><p>Пожалуйста, выбирайте теги внимательно.</p>",
   "characterLimit": 100,
+  "cacheMaxAgeHours": 12,
   "categories": [
     {
       "name": "Жанры",
@@ -35,12 +36,19 @@
           "name": "фэнтези",
           "alternative": "fantasy",
           "subgroup": "Фантастика",
-          "knownAs": ["fantasy", "фантастика"],
+          "knownAs": [
+            "fantasy",
+            "фантастика"
+          ],
           "description": "Миры с магией и мифическими существами",
           "main": true
         },
         {
-          "name": ["научная фантастика", "sci-fi", "нф"],
+          "name": [
+            "научная фантастика",
+            "sci-fi",
+            "нф"
+          ],
           "alternative": "sci-fi",
           "subgroup": "Фантастика",
           "description": "Технологии будущего и космос"
@@ -60,14 +68,24 @@
           "description": "Персональный компьютер"
         },
         {
-          "name": ["PlayStation", "PS", "PS4", "PS5"],
+          "name": [
+            "PlayStation",
+            "PS",
+            "PS4",
+            "PS5"
+          ],
           "alternative": "PS",
           "subgroup": "",
           "description": "Консоли Sony",
           "main": true
         },
         {
-          "name": ["Xbox", "XBOX", "Xbox One", "Xbox Series"],
+          "name": [
+            "Xbox",
+            "XBOX",
+            "Xbox One",
+            "Xbox Series"
+          ],
           "alternative": "Xbox",
           "subgroup": "",
           "description": "Консоли Microsoft"
@@ -93,7 +111,10 @@
           "main": true
         },
         {
-          "name": ["средний приоритет", "нормальный приоритет"],
+          "name": [
+            "средний приоритет",
+            "нормальный приоритет"
+          ],
           "alternative": "medium priority",
           "subgroup": "",
           "description": "Теги средней важности"

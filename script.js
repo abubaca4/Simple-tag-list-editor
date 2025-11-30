@@ -30,26 +30,60 @@ class TagsManager {
             return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
         };
 
-        const fetchFile = async (f) => {
-            const r = await fetch(f);
-            if (!r.ok) throw new Error(`Файл не найден (статус: ${r.status})`);
-            return await r.json();
-        };
-
         const fileName = getParams();
         try {
-            return await fetchFile(fileName);
+            return await this.fetchWithCache(fileName);
         } catch (e) {
             // Резервный вариант, если указанный файл не найден
             if (fileName !== 'tags.json') {
                 try {
-                    return await fetchFile('tags.json');
+                    return await this.fetchWithCache('tags.json');
                 } catch (fallbackErr) {
                     throw e;
                 }
             }
             throw e;
         }
+    }
+
+    async fetchWithCache(url) {
+        const cacheKey = `tagsConfigCache_${url}`;
+        const cached = localStorage.getItem(cacheKey);
+        let cacheInfo = cached ? JSON.parse(cached) : null;
+
+        // Определяем параметры кеширования
+        const now = Date.now();
+        const defaultMaxAge = 24; // часов
+        const cacheMaxAge = (cacheInfo?.maxAgeHours || defaultMaxAge) * 60 * 60 * 1000;
+        const shouldForceRefresh = !cacheInfo || (now - cacheInfo.lastUpdated) > cacheMaxAge;
+
+        // Формируем заголовки запроса
+        const headers = {};
+        if (cacheInfo?.etag) headers['If-None-Match'] = cacheInfo.etag;
+        if (cacheInfo?.lastModified) headers['If-Modified-Since'] = cacheInfo.lastModified;
+
+        const options = {
+            headers,
+            cache: shouldForceRefresh ? 'no-cache' : 'default'
+        };
+
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+            throw new Error(`Файл не найден (статус: ${response.status})`);
+        }
+
+        // Обновляем информацию о кеше при успешном ответе
+        const data = await response.json();
+        const newCacheInfo = {
+            etag: response.headers.get('ETag'),
+            lastModified: response.headers.get('Last-Modified'),
+            lastUpdated: now,
+            maxAgeHours: data.cacheMaxAgeHours || defaultMaxAge
+        };
+
+        localStorage.setItem(cacheKey, JSON.stringify(newCacheInfo));
+        return data;
     }
 
     async initialize() {
