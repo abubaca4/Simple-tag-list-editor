@@ -353,6 +353,8 @@ class TagsManager {
     // Генерирует HTML-структуру категорий и кнопок тегов
     render() {
         const { container, navList, refSection, refContent, refToggleBtn } = this.dom;
+
+        // Очистка контейнеров
         container.innerHTML = '';
         navList.innerHTML = '';
 
@@ -366,7 +368,14 @@ class TagsManager {
             refSection.classList.add('util-hidden');
         }
 
+        // Создание DocumentFragment для категорий
+        const categoriesFragment = document.createDocumentFragment();
+
+        // Создание DocumentFragment для навигации
+        const navFragment = document.createDocumentFragment();
+
         this.categories.forEach((catData, catName) => {
+            // Создание DOM-элемента категории
             const catDiv = this.el('div', 'category');
             catData.dom = catDiv; // Сохранение ссылки на DOM-элемент категории
 
@@ -406,12 +415,19 @@ class TagsManager {
                 subDiv.append(groupDiv);
                 catDiv.append(subDiv);
             });
-            container.append(catDiv);
 
+            // Добавление категории во фрагмент
+            categoriesFragment.appendChild(catDiv);
+
+            // Создание элемента навигации
             const navItem = this.el('button', 'category-nav-item', catName);
             navItem.onclick = () => this.scrollToCat(catName);
-            navList.append(navItem);
+            navFragment.appendChild(navItem);
         });
+
+        // Одноразовое добавление всех категорий и элементов навигации
+        container.appendChild(categoriesFragment);
+        navList.appendChild(navFragment);
 
         this.updateNavVis();
         this.updatePinState();
@@ -419,9 +435,17 @@ class TagsManager {
 
     // Создает кнопку тега с заданными параметрами
     createBtn(tag) {
-        return this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
+        const btn = this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
             'data-tooltip': tag.description || ''
         });
+
+        // Сохранение ссылки на кнопку в объекте тега для быстрого доступа
+        if (!tag.domButtons) {
+            tag.domButtons = [];
+        }
+        tag.domButtons.push(btn);
+
+        return btn;
     }
 
     // Переключает и сохраняет состояние темы (Авто/Темная/Светлая)
@@ -445,22 +469,32 @@ class TagsManager {
     groupTags(catData) {
         const subs = new Map();
         const processed = new Set();
+
+        // Инициализация domButtons для всех тегов
+        catData.tags.forEach(tag => {
+            tag.domButtons = [];
+        });
+
         catData.variantGroups.forEach((vars, main) => {
             const tag = catData.tags.get(vars[0]);
             if (!tag) return;
             const s = tag.subgroup || '';
             if (!subs.has(s)) subs.set(s, []);
             subs.get(s).push({
-                type: 'variant', variants: vars.map(v => catData.tags.get(v)), desc: tag.description
+                type: 'variant',
+                variants: vars.map(v => catData.tags.get(v)),
+                desc: tag.description
             });
             processed.add(main);
         });
+
         catData.tags.forEach(tag => {
             if (tag.isVariant || processed.has(tag.mainName)) return;
             const s = tag.subgroup || '';
             if (!subs.has(s)) subs.set(s, []);
             subs.get(s).push({ type: 'single', tag });
         });
+
         return subs;
     }
 
@@ -700,38 +734,39 @@ class TagsManager {
 
     // Основная функция для обновления классов кнопок и предупреждений внутри контейнера категории
     updateButtonsInContainer(container, cat) {
-        const btns = container.querySelectorAll('.tag-button');
-        btns.forEach(btn => {
-            const tName = btn.textContent;
-            const tag = cat.tags.get(tName);
-            if (!tag) return;
+        // Более эффективный подход - использование сохранённых ссылок на кнопки
+        cat.tags.forEach(tag => {
+            if (tag.domButtons && tag.domButtons.length > 0) {
+                tag.domButtons.forEach(btn => {
+                    const tName = tag.name; // Используем имя из объекта тега
+                    const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tName;
 
-            const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tName;
-
-            // Установка класса 'selected'
-            if (btn.classList.contains('selected') !== sel) {
-                btn.classList.toggle('selected', sel);
-            }
-
-            // Установка порядка для ordered-категорий
-            if (cat.type === 'ordered') {
-                if (sel) {
-                    const order = cat.orderedTags.indexOf(tag.mainName) + 1;
-                    if (btn.getAttribute('data-order') != order) {
-                        btn.classList.add('ordered');
-                        btn.setAttribute('data-order', order);
+                    // Установка класса 'selected'
+                    if (btn.classList.contains('selected') !== sel) {
+                        btn.classList.toggle('selected', sel);
                     }
-                } else {
-                    if (btn.classList.contains('ordered')) {
-                        btn.classList.remove('ordered');
-                        btn.removeAttribute('data-order');
+
+                    // Установка порядка для ordered-категорий
+                    if (cat.type === 'ordered') {
+                        if (sel) {
+                            const order = cat.orderedTags.indexOf(tag.mainName) + 1;
+                            if (btn.getAttribute('data-order') != order) {
+                                btn.classList.add('ordered');
+                                btn.setAttribute('data-order', order);
+                            }
+                        } else {
+                            if (btn.classList.contains('ordered')) {
+                                btn.classList.remove('ordered');
+                                btn.removeAttribute('data-order');
+                            }
+                        }
+                    } else {
+                        if (btn.classList.contains('ordered')) {
+                            btn.classList.remove('ordered');
+                            btn.removeAttribute('data-order');
+                        }
                     }
-                }
-            } else {
-                if (btn.classList.contains('ordered')) {
-                    btn.classList.remove('ordered');
-                    btn.removeAttribute('data-order');
-                }
+                });
             }
         });
 
