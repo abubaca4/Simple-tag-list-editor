@@ -117,17 +117,17 @@ class TagsManager {
             // Ожидает завершения загрузки данных
             try {
                 this.tagsData = await this.dataPromise;
-                
+
                 // Проверяем наличие лимита символов в конфигурации
-                this.hasCharacterLimit = this.tagsData.characterLimit !== undefined && 
-                                         this.tagsData.characterLimit !== null && 
-                                         this.tagsData.characterLimit > 0;
-                
+                this.hasCharacterLimit = this.tagsData.characterLimit !== undefined &&
+                    this.tagsData.characterLimit !== null &&
+                    this.tagsData.characterLimit > 0;
+
                 // Скрываем блок с лимитом, если он не задан
                 if (!this.hasCharacterLimit) {
                     this.dom.limitBox.parentElement.classList.add('util-hidden');
                 }
-                
+
             } catch (e) {
                 this.handleLoadError(e);
                 return;
@@ -147,6 +147,7 @@ class TagsManager {
 
             // Обновляет состояние всех кнопок и элементов
             this.updateFullState();
+            this.updateAlt();
         } catch (e) {
             console.error(e);
             if (!this.dom.error.classList.contains('util-hidden')) return;
@@ -719,7 +720,7 @@ class TagsManager {
     updateLimitDisplay(len) {
         // Если лимит не задан, не обновляем отображение
         if (!this.hasCharacterLimit) return;
-        
+
         const limit = this.tagsData.characterLimit;
         const isLim = this.dom.limitBox.checked;
         this.dom.limitDisp.textContent = `${len}/${limit}`;
@@ -730,7 +731,7 @@ class TagsManager {
     flashLimitError() {
         // Если лимит не задан, не показываем ошибку
         if (!this.hasCharacterLimit) return;
-        
+
         this.dom.limitDisp.classList.add('exceeded');
         const originalText = this.dom.limitDisp.textContent;
         this.dom.limitDisp.textContent = "ЛИМИТ!";
