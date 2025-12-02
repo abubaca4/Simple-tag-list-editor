@@ -829,15 +829,23 @@ class TagsManager {
 
         const s = alts.join(this.tagsData.alternativeSeparator);
 
-        // Обновление DOM только при изменении значения
+        // ВСЕГДА обновляем видимость секции в зависимости от наличия текста
+        const shouldBeVisible = s.length > 0;
+
+        // Проверяем, нужно ли изменить видимость
+        if (shouldBeVisible !== !this.dom.altSection.classList.contains('util-hidden')) {
+            this.dom.altSection.classList.toggle('util-hidden', !shouldBeVisible);
+        }
+
+        // Обновляем значение только если оно изменилось
         if (this.dom.altOut.value !== s) {
-            this.dom.altSection.classList.toggle('util-hidden', !s);
             this.dom.altOut.value = s;
-            if (this.isHeaderPinned) {
-                // Обновление смещения хедера после изменения размеров секции
-                if (!this.scrollTicking) {
-                    window.requestAnimationFrame(() => this.updateHeaderOffset());
-                }
+        }
+
+        // Обновление смещения хедера при изменении видимости секции
+        if (shouldBeVisible && this.isHeaderPinned) {
+            if (!this.scrollTicking) {
+                window.requestAnimationFrame(() => this.updateHeaderOffset());
             }
         }
     }
