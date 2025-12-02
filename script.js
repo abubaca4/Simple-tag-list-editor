@@ -19,6 +19,9 @@ class TagsManager {
         this.themeIcons = { auto: '🌓', dark: '🌙', light: '☀️' };
         this.themeTexts = { auto: 'Авто', dark: 'Тёмная', light: 'Светлая' };
 
+        // Флаг для проверки наличия лимита
+        this.hasCharacterLimit = false;
+
         // Запускает главную последовательность инициализации
         this.initialize();
     }
@@ -114,6 +117,17 @@ class TagsManager {
             // Ожидает завершения загрузки данных
             try {
                 this.tagsData = await this.dataPromise;
+                
+                // Проверяем наличие лимита символов в конфигурации
+                this.hasCharacterLimit = this.tagsData.characterLimit !== undefined && 
+                                         this.tagsData.characterLimit !== null && 
+                                         this.tagsData.characterLimit > 0;
+                
+                // Скрываем блок с лимитом, если он не задан
+                if (!this.hasCharacterLimit) {
+                    this.dom.limitBox.parentElement.classList.add('util-hidden');
+                }
+                
             } catch (e) {
                 this.handleLoadError(e);
                 return;
@@ -550,28 +564,31 @@ class TagsManager {
             else setSel(tagName);
         }
 
-        // Предварительная проверка лимита символов
-        const newStr = this.generateOutputString();
-        const limit = this.tagsData.characterLimit;
-        const isLim = this.dom.limitBox.checked;
+        // ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА ЛИМИТА СИМВОЛОВ - только если лимит задан
+        if (this.hasCharacterLimit) {
+            const newStr = this.generateOutputString();
+            const limit = this.tagsData.characterLimit;
+            const isLim = this.dom.limitBox.checked;
 
-        if (isLim && newStr.length > limit) {
-            // Откат состояния, если лимит превышен
-            cat.selectedTags.forEach(m => this.selectedTags.delete(m));
+            if (isLim && newStr.length > limit) {
+                // Откат состояния, если лимит превышен
+                cat.selectedTags.forEach(m => this.selectedTags.delete(m));
 
-            cat.selectedTags = snapshot.selectedTags;
-            cat.orderedTags = snapshot.orderedTags;
-            cat.selectedVariants = snapshot.selectedVariants;
+                cat.selectedTags = snapshot.selectedTags;
+                cat.orderedTags = snapshot.orderedTags;
+                cat.selectedVariants = snapshot.selectedVariants;
 
-            // Восстановление глобальных ссылок
-            cat.selectedTags.forEach(m => this.selectedTags.set(m, catName));
+                // Восстановление глобальных ссылок
+                cat.selectedTags.forEach(m => this.selectedTags.set(m, catName));
 
-            // Визуальное уведомление об ошибке
-            this.flashLimitError();
-            return;
+                // Визуальное уведомление об ошибке
+                this.flashLimitError();
+                return;
+            }
         }
 
         // Обновление интерфейса
+        const newStr = this.generateOutputString();
         this.dom.input.value = newStr;
         this.updateLimitDisplay(newStr.length);
         this.updateCategoryDOM(cat); // Обновление только одной категории
@@ -700,6 +717,9 @@ class TagsManager {
 
     // Обновляет индикатор лимита символов
     updateLimitDisplay(len) {
+        // Если лимит не задан, не обновляем отображение
+        if (!this.hasCharacterLimit) return;
+        
         const limit = this.tagsData.characterLimit;
         const isLim = this.dom.limitBox.checked;
         this.dom.limitDisp.textContent = `${len}/${limit}`;
@@ -708,6 +728,9 @@ class TagsManager {
 
     // Визуально сигнализирует о превышении лимита символов
     flashLimitError() {
+        // Если лимит не задан, не показываем ошибку
+        if (!this.hasCharacterLimit) return;
+        
         this.dom.limitDisp.classList.add('exceeded');
         const originalText = this.dom.limitDisp.textContent;
         this.dom.limitDisp.textContent = "ЛИМИТ!";
