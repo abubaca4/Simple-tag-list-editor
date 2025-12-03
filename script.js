@@ -863,7 +863,7 @@ class TagsManager {
     updateHeaderOffset() {
         if (!this.isHeaderPinned) { this.dom.main.style.paddingTop = ''; return; }
         const h = this.dom.header.offsetHeight;
-        const target = `${h + 45}px`;
+        const target = `${h + 55}px`;
         if (this.dom.main.style.paddingTop !== target) {
             this.dom.main.style.paddingTop = target;
         }
