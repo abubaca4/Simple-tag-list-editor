@@ -128,6 +128,8 @@ class TagsManager {
                     this.dom.limitBox.parentElement.classList.add('util-hidden');
                 }
 
+                this.initWebLinks();
+
             } catch (e) {
                 this.handleLoadError(e);
                 return;
@@ -193,6 +195,7 @@ class TagsManager {
             refToggleBtn: id('toggleReferenceButton'),
             refContent: id('referenceContent'),
             themeToggleBtn: id('themeToggleButton'),
+            webLinksNav: id('webLinksNav'),
             themeIcon: document.querySelector('.theme-icon'),
             themeText: document.querySelector('.theme-text')
         };
@@ -272,6 +275,34 @@ class TagsManager {
             });
             this.categories.set(cat.name, catData);
         });
+    }
+
+    initWebLinks() {
+        const { webLinksNav } = this.dom;
+
+        if (!webLinksNav) return;
+
+        // Очищаем существующие ссылки
+        webLinksNav.innerHTML = '';
+
+        // Проверяем наличие webLinks в конфигурации
+        if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
+            // Создаем ссылки
+            this.tagsData.webLinks.forEach(link => {
+                const linkElement = this.el('a', 'web-link-item', link.name, {
+                    'href': link.url,
+                    'target': '_blank',
+                    'rel': 'noopener noreferrer'
+                });
+                webLinksNav.appendChild(linkElement);
+            });
+
+            // Показываем блок
+            webLinksNav.classList.remove('util-hidden');
+        } else {
+            // Скрываем блок, если ссылок нет
+            webLinksNav.classList.add('util-hidden');
+        }
     }
 
     // Генерирует альтернативные имена для тегов с косой чертой (например, "A/B C" -> "A C", "B C")

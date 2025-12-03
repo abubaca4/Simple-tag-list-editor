@@ -60,7 +60,14 @@
             <div id="categoriesNav" class="categories-nav util-hidden">
                 <div class="categories-nav-header">
                     <div class="categories-nav-title">⏬ Быстрый переход:</div>
-                    <button id="pinHeaderButton" class="pin-header-button" type="button">Закрепить</button>
+                    <div class="header-controls-right">
+                        <button id="themeToggleButton" class="theme-toggle-button pin-header-button" type="button"
+                            title="Переключить тему">
+                            <span class="theme-icon">🌓</span>
+                            <span class="theme-text">Авто</span>
+                        </button>
+                        <button id="pinHeaderButton" class="pin-header-button" type="button">Закрепить</button>
+                    </div>
                 </div>
                 <div id="categoriesNavList" class="categories-nav-list"></div>
             </div>
@@ -79,11 +86,8 @@
                     </label>
                     <span id="limitDisplay" class="limit-display"></span>
                 </div>
-                <button id="themeToggleButton" class="theme-toggle-button pin-header-button" type="button"
-                    title="Переключить тему">
-                    <span class="theme-icon">🌓</span>
-                    <span class="theme-text">Авто</span>
-                </button>
+                <div id="webLinksNav" class="web-links-nav util-hidden">
+                </div>
             </div>
         </div>
 
