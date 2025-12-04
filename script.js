@@ -142,6 +142,11 @@ class TagsManager {
                     this.dom.limitBox.parentElement.classList.add('util-hidden');
                 }
 
+                // Скрываем input-section, если указано в конфигурации
+                if (this.tagsData.hideInputSection) {
+                    this.dom.inputSection.classList.add('util-hidden');
+                }
+
                 this.initWebLinks();
 
             } catch (e) {
@@ -197,6 +202,7 @@ class TagsManager {
             errTitle: id('errorTitle'),
             app: id('appContainer'),
             input: id('tagsInput'),
+            inputSection: id('inputSection'),
             unrecWarn: id('unrecognizedTagsWarning'),
             limitBox: id('limitCheckbox'),
             limitDisp: id('limitDisplay'),
