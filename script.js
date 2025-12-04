@@ -54,6 +54,8 @@ class TagsManager {
             return p && !p.endsWith('.json') ? `${p}.json` : (p || 'tags.json');
         };
 
+        this.configFileName = getParams();
+
         const fetchFile = async (f, fetchMode) => {
             const options = {
                 cache: fetchMode // 'default' (использует кеш, если свежий) или 'no-cache' (игнорирует кеш)
@@ -107,6 +109,18 @@ class TagsManager {
         }
     }
 
+    saveStateToStorage() {
+        if (!this.configFileName) return;
+        const key = `tagsManager_autosave:${this.configFileName}`;
+        localStorage.setItem(key, this.dom.input.value);
+    }
+
+    loadStateFromStorage() {
+        if (!this.configFileName) return null;
+        const key = `tagsManager_autosave:${this.configFileName}`;
+        return localStorage.getItem(key);
+    }
+
     async initialize() {
         try {
             // Кэширует ссылки на все DOM-элементы
@@ -142,9 +156,14 @@ class TagsManager {
             // Рендерит HTML-структуру тегов и навигации
             this.render();
 
-            // Парсит текущее значение в поле ввода (если оно есть)
-            if (this.dom.input.value) {
-                this.parseInput(this.dom.input.value, true);
+            // 1. Пробуем загрузить сохраненное состояние
+            const savedState = this.loadStateFromStorage();
+
+            // 2. Если есть сохранение, используем его. Если нет, берем то, что в HTML (value="" у input)
+            const initialValue = savedState !== null ? savedState : this.dom.input.value;
+
+            if (initialValue) {
+                this.parseInput(initialValue, true);
             }
 
             // Обновляет состояние всех кнопок и элементов
@@ -289,11 +308,21 @@ class TagsManager {
         if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
             // Создаем ссылки
             this.tagsData.webLinks.forEach(link => {
-                const linkElement = this.el('a', 'web-link-item', link.name, {
+                // Если в JSON указан target (например, "_self"), используем его.
+                // Иначе по умолчанию '_blank' (новая вкладка).
+                const target = link.target || '_blank';
+
+                const linkAttrs = {
                     'href': link.url,
-                    'target': '_blank',
-                    'rel': 'noopener noreferrer'
-                });
+                    'target': target
+                };
+
+                // Добавляем rel="noopener noreferrer" только для внешних вкладок для безопасности
+                if (target === '_blank') {
+                    linkAttrs['rel'] = 'noopener noreferrer';
+                }
+
+                const linkElement = this.el('a', 'web-link-item', link.name, linkAttrs);
                 webLinksNav.appendChild(linkElement);
             });
 
@@ -622,6 +651,7 @@ class TagsManager {
         // Обновление интерфейса
         const newStr = this.generateOutputString();
         this.dom.input.value = newStr;
+        this.saveStateToStorage();
         this.updateLimitDisplay(newStr.length);
         this.updateCategoryDOM(cat); // Обновление только одной категории
         this.updateAlt();

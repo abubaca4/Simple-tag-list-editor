@@ -4,7 +4,8 @@
   "webLinks": [
     {
       "name": "Site",
-      "url": "https://example.com/"
+      "url": "https://example.com/",
+      "target": "_self"
     }
   ],
   "reference": "<p><strong>Добро пожаловать в руководство по тегам!</strong></p><ul><li>Здесь вы найдете информацию о правилах выбора тегов.</li><li>HTML-теги, такие как <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code> и <code>&lt;ul&gt;</code>, поддерживаются.</li></ul><p>Пожалуйста, выбирайте теги внимательно.</p>",
