@@ -758,10 +758,10 @@ body {
 
 .web-link-item {
     padding: var(--spacing-xs) var(--spacing-md);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--main-tag-border);
     border-radius: var(--radius-pill);
-    background-color: var(--nav-item-bg);
-    color: var(--text-color);
+    background-color: var(--main-tag-bg);
+    color: var(--main-tag-text);
     text-decoration: none;
     font-size: var(--font-size-sm);
     cursor: pointer;
