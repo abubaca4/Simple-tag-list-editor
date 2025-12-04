@@ -560,6 +560,35 @@ body {
     font-weight: var(--font-weight-bold);
 }
 
+/* Стили для тегов с картинками */
+.tag-button.has-image {
+    padding: 4px;
+    /* Уменьшаем отступы, чтобы картинка была крупнее */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    height: 40px;
+    /* Фиксируем высоту для красоты, можно изменить */
+    min-width: 40px;
+}
+
+.tag-button.has-image img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+    /* Картинка вписывается без искажений */
+    display: block;
+    pointer-events: none;
+    /* Чтобы клик по картинке проходил в кнопку */
+}
+
+/* Корректировка кружка с порядковым номером для картинок */
+.tag-button.has-image.ordered::after {
+    top: -6px;
+    right: -6px;
+}
+
 .variant-group {
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);

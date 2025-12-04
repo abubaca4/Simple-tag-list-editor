@@ -260,12 +260,16 @@ class TagsManager {
                 const main = names[0];
                 if (names.length > 1) catData.variantGroups.set(main, names);
 
+                // Если имя только одно и есть поле image, сохраняем путь. Иначе null.
+                const imageUrl = (names.length === 1 && t.image) ? t.image : null;
+
                 names.forEach(name => {
                     catData.tags.set(name, {
                         name, mainName: main,
                         alternative: t.alternative || '',
                         subgroup: t.subgroup || '',
                         description: t.description || '',
+                        image: imageUrl,
                         isVariant: name !== main,
                         isMainTag: t.main || false,
                         knownAs: t.knownAs || []
@@ -382,7 +386,10 @@ class TagsManager {
             const btn = e.target.closest('.tag-button');
             if (!btn) return;
             const catName = btn.closest('.category').querySelector('.category-title').textContent;
-            this.handleTagClick(catName, btn.textContent);
+
+            const tagName = btn.dataset.name || btn.textContent;
+
+            this.handleTagClick(catName, tagName);
         });
 
         // Переключение состояния закрепления хедера
@@ -515,11 +522,23 @@ class TagsManager {
 
     // Создает кнопку тега с заданными параметрами
     createBtn(tag) {
-        const btn = this.el('button', `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`, tag.name, {
-            'data-tooltip': tag.description || ''
+        const btnText = tag.image ? '' : tag.name;
+
+        let cssClass = `tag-button util-tag-base${tag.isMainTag ? ' main-tag' : ''}`;
+        if (tag.image) cssClass += ' has-image';
+
+        const btn = this.el('button', cssClass, btnText, {
+            'data-tooltip': tag.description || '',
+            'data-name': tag.name // <--- ВАЖНОЕ ИЗМЕНЕНИЕ: сохраняем имя в атрибут
         });
 
-        // Сохранение ссылки на кнопку в объекте тега для быстрого доступа
+        if (tag.image) {
+            const img = document.createElement('img');
+            img.src = tag.image;
+            img.alt = tag.name;
+            btn.appendChild(img);
+        }
+
         if (!tag.domButtons) {
             tag.domButtons = [];
         }
