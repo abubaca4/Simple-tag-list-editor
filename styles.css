@@ -756,17 +756,22 @@ body {
     margin-top: var(--spacing-sm);
 }
 
+/* Дополнительные стили для веб-ссылок */
 .web-link-item {
-    padding: var(--spacing-xs) var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-pill);
-    background-color: var(--nav-item-bg);
-    color: var(--text-color);
+    /* Наследуем стили от tag-button и main-tag */
     text-decoration: none;
-    font-size: var(--font-size-sm);
-    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
     transition: all var(--transition-normal);
-    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Состояние при клике */
+.web-link-item.clicked {
+    transform: scale(0.95);
 }
 
 .web-link-item:hover {
@@ -863,6 +868,11 @@ body {
     .web-links-nav {
         justify-content: center;
         margin-top: var(--spacing-md);
+    }
+
+    .web-link-item {
+        min-height: 32px;
+        font-size: var(--font-size-sm);
     }
 }
 

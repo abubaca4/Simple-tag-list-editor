@@ -308,13 +308,12 @@ class TagsManager {
         if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
             // Создаем ссылки
             this.tagsData.webLinks.forEach(link => {
-                // Если в JSON указан target (например, "_self"), используем его.
-                // Иначе по умолчанию '_blank' (новая вкладка).
                 const target = link.target || '_blank';
 
                 const linkAttrs = {
                     'href': link.url,
-                    'target': target
+                    'target': target,
+                    'data-tooltip': link.description || '' // Добавляем описание как подсказку
                 };
 
                 // Добавляем rel="noopener noreferrer" только для внешних вкладок для безопасности
@@ -322,7 +321,17 @@ class TagsManager {
                     linkAttrs['rel'] = 'noopener noreferrer';
                 }
 
-                const linkElement = this.el('a', 'web-link-item', link.name, linkAttrs);
+                // Создаем элемент с классами, как у main тегов
+                const linkElement = this.el('a', 'tag-button main-tag web-link-item', link.name, linkAttrs);
+
+                // Добавляем обработчик для визуальной обратной связи при клике
+                linkElement.addEventListener('click', (e) => {
+                    e.currentTarget.classList.add('clicked');
+                    setTimeout(() => {
+                        e.currentTarget.classList.remove('clicked');
+                    }, 300);
+                });
+
                 webLinksNav.appendChild(linkElement);
             });
 
