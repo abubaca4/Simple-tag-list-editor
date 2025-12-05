@@ -140,6 +140,8 @@ class TagsManager {
                 // Скрываем блок с лимитом, если он не задан
                 if (!this.hasCharacterLimit) {
                     this.dom.limitBox.parentElement.classList.add('util-hidden');
+                } else {
+                    this.updateLimitDisplay(this.dom.input.value.length);
                 }
 
                 // Скрываем input-section, если указано в конфигурации
