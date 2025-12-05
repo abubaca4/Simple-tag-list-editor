@@ -137,13 +137,6 @@ class TagsManager {
                     this.tagsData.characterLimit !== null &&
                     this.tagsData.characterLimit > 0;
 
-                // Скрываем блок с лимитом, если он не задан
-                if (!this.hasCharacterLimit) {
-                    this.dom.limitBox.parentElement.classList.add('util-hidden');
-                } else {
-                    this.updateLimitDisplay(this.dom.input.value.length);
-                }
-
                 // Скрываем input-section, если указано в конфигурации
                 if (this.tagsData.hideInputSection) {
                     this.dom.input.classList.add('util-hidden');
@@ -171,6 +164,13 @@ class TagsManager {
 
             if (initialValue) {
                 this.parseInput(initialValue, true);
+            }
+
+            // Скрываем блок с лимитом, если он не задан
+            if (!this.hasCharacterLimit) {
+                this.dom.limitBox.parentElement.classList.add('util-hidden');
+            } else {
+                this.updateLimitDisplay(this.dom.input.value.length);
             }
 
             // Обновляет состояние всех кнопок и элементов
