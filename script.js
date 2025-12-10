@@ -318,9 +318,9 @@ class TagsManager {
         // Проверяем наличие webLinks в конфигурации
         if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
 
-            // 1. Получаем параметр linkbuttun из URL и преобразуем его в массив имен
+            // 1. Получаем параметр linkbutton из URL и преобразуем его в массив имен
             const urlParams = new URLSearchParams(window.location.search);
-            const linkButtonParam = urlParams.get('linkbuttun');
+            const linkButtonParam = urlParams.get('linkbutton');
             const allowedButtons = linkButtonParam ? linkButtonParam.split(',').map(s => s.trim()) : [];
 
             let addedLinksCount = 0;
