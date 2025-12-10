@@ -317,30 +317,46 @@ class TagsManager {
 
         // Проверяем наличие webLinks в конфигурации
         if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
-            // Создаем ссылки
+
+            // 1. Получаем параметр linkbuttun из URL и преобразуем его в массив имен
+            const urlParams = new URLSearchParams(window.location.search);
+            const linkButtonParam = urlParams.get('linkbuttun');
+            const allowedButtons = linkButtonParam ? linkButtonParam.split(',').map(s => s.trim()) : [];
+
+            let addedLinksCount = 0;
+
+            // 2. Фильтруем и создаем ссылки
             this.tagsData.webLinks.forEach(link => {
-                // Если в JSON указан target (например, "_self"), используем его.
-                // Иначе по умолчанию '_blank' (новая вкладка).
-                const target = link.target || '_blank';
+                // Логика отображения: 
+                // - Если fName нет, отображаем всегда.
+                // - Если fName есть, проверяем его наличие в параметрах запроса.
+                const shouldDisplay = !link.fName || allowedButtons.includes(link.fName);
 
-                const linkAttrs = {
-                    'href': link.url,
-                    'target': target
-                };
+                if (shouldDisplay) {
+                    const target = link.target || '_blank';
+                    const linkAttrs = {
+                        'href': link.url,
+                        'target': target
+                    };
 
-                // Добавляем rel="noopener noreferrer" только для внешних вкладок для безопасности
-                if (target === '_blank') {
-                    linkAttrs['rel'] = 'noopener noreferrer';
+                    if (target === '_blank') {
+                        linkAttrs['rel'] = 'noopener noreferrer';
+                    }
+
+                    const linkElement = this.el('a', 'web-link-item', link.name, linkAttrs);
+                    webLinksNav.appendChild(linkElement);
+                    addedLinksCount++;
                 }
-
-                const linkElement = this.el('a', 'web-link-item', link.name, linkAttrs);
-                webLinksNav.appendChild(linkElement);
             });
 
-            // Показываем блок
-            webLinksNav.classList.remove('util-hidden');
+            // Показываем блок только если в итоге была добавлена хотя бы одна ссылка
+            if (addedLinksCount > 0) {
+                webLinksNav.classList.remove('util-hidden');
+            } else {
+                webLinksNav.classList.add('util-hidden');
+            }
         } else {
-            // Скрываем блок, если ссылок нет
+            // Скрываем блок, если ссылок нет вообще
             webLinksNav.classList.add('util-hidden');
         }
     }
