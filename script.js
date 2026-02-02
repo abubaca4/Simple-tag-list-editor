@@ -274,7 +274,8 @@ class TagsManager {
                         image: imageUrl,
                         isVariant: name !== main,
                         isMainTag: t.main || false,
-                        knownAs: t.knownAs || []
+                        knownAs: t.knownAs || [],
+                        requiredTag: t.requiredTag || null
                     });
 
                     // Индексация тегов для быстрого поиска
@@ -318,7 +319,7 @@ class TagsManager {
         // Проверяем наличие webLinks в конфигурации
         if (this.tagsData.webLinks && Array.isArray(this.tagsData.webLinks) && this.tagsData.webLinks.length > 0) {
 
-            // 1. Получаем параметр linkbutton из URL и преобразуем его в массив имен
+            // 1. Получаем параметр linkbuttun из URL и преобразуем его в массив имен
             const urlParams = new URLSearchParams(window.location.search);
             const linkButtonParam = urlParams.get('linkbutton');
             const allowedButtons = linkButtonParam ? linkButtonParam.split(',').map(s => s.trim()) : [];
@@ -667,6 +668,11 @@ class TagsManager {
             else setSel(tagName);
         }
 
+        // Если тег сейчас выбран и у него есть требование другого тега
+        if (cat.selectedTags.has(main) && tag.requiredTag) {
+            this.processRequiredTag(cat, tag.requiredTag);
+        }
+
         // ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА ЛИМИТА СИМВОЛОВ - только если лимит задан
         if (this.hasCharacterLimit) {
             const newStr = this.generateOutputString();
@@ -697,6 +703,36 @@ class TagsManager {
         this.updateLimitDisplay(newStr.length);
         this.updateCategoryDOM(cat); // Обновление только одной категории
         this.updateAlt();
+    }
+
+    // Обрабатывает логику обязательного связанного тега
+    processRequiredTag(cat, targetName) {
+        // Ищем тег в текущей категории
+        const targetTag = cat.tags.get(targetName);
+        
+        // Если тег не найден в этой категории, игнорируем
+        if (!targetTag) return;
+
+        const targetMain = targetTag.mainName;
+
+        // Если тег уже выбран, ничего не делаем (чтобы не сбивать вариант, если он уже выбран)
+        if (cat.selectedTags.has(targetMain)) return;
+
+        // Добавляем тег в выбранные
+        cat.selectedTags.add(targetMain);
+        this.selectedTags.set(targetMain, cat.name);
+        
+        // Устанавливаем вариант (имя, которое было указано в requiredTag)
+        cat.selectedVariants.set(targetMain, targetName);
+
+        // Если категория упорядоченная, добавляем в список и сортируем
+        if (cat.type === 'ordered') {
+            cat.orderedTags.push(targetMain);
+            cat.orderedTags.sort((a, b) => {
+                const isAm = cat.tags.get(a).isMainTag, isBm = cat.tags.get(b).isMainTag;
+                return (isAm === isBm) ? 0 : isAm ? -1 : 1;
+            });
+        }
     }
 
     // Парсит входную строку из поля ввода, обновляя внутреннее состояние
