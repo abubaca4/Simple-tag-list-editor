@@ -775,29 +775,42 @@ class TagsManager {
     this.updateAlt();
   }
 
-  // Обрабатывает логику обязательного связанного тега
-  processRequiredTag(cat, targetName) {
-    // Ищем тег в текущей категории
-    const targetTag = cat.tags.get(targetName);
+  // Обрабатывает логику обязательного связанного тега (поддерживает строку или массив)
+  processRequiredTag(cat, requiredTags) {
+    // Нормализуем входные данные: превращаем одиночную строку в массив
+    const targets = Array.isArray(requiredTags) ? requiredTags : [requiredTags];
 
-    // Если тег не найден в этой категории, игнорируем
-    if (!targetTag) return;
+    let tagsAdded = false;
 
-    const targetMain = targetTag.mainName;
+    targets.forEach((targetName) => {
+      // Ищем тег в текущей категории
+      const targetTag = cat.tags.get(targetName);
 
-    // Если тег уже выбран, ничего не делаем (чтобы не сбивать вариант, если он уже выбран)
-    if (cat.selectedTags.has(targetMain)) return;
+      // Если тег не найден в этой категории, игнорируем
+      if (!targetTag) return;
 
-    // Добавляем тег в выбранные
-    cat.selectedTags.add(targetMain);
-    this.selectedTags.set(targetMain, cat.name);
+      const targetMain = targetTag.mainName;
 
-    // Устанавливаем вариант (имя, которое было указано в requiredTag)
-    cat.selectedVariants.set(targetMain, targetName);
+      // Если тег уже выбран, пропускаем (чтобы не сбивать вариант, если он уже выбран)
+      if (cat.selectedTags.has(targetMain)) return;
 
-    // Если категория упорядоченная, добавляем в список и сортируем
-    if (cat.type === "ordered") {
-      cat.orderedTags.push(targetMain);
+      // Добавляем тег в выбранные
+      cat.selectedTags.add(targetMain);
+      this.selectedTags.set(targetMain, cat.name);
+
+      // Устанавливаем вариант (имя, которое было указано в requiredTag)
+      cat.selectedVariants.set(targetMain, targetName);
+
+      // Если категория упорядоченная, добавляем в список
+      if (cat.type === "ordered") {
+        cat.orderedTags.push(targetMain);
+      }
+      
+      tagsAdded = true;
+    });
+
+    // Сортируем список только один раз, если были добавлены новые теги и категория упорядоченная
+    if (tagsAdded && cat.type === "ordered") {
       cat.orderedTags.sort((a, b) => {
         const isAm = cat.tags.get(a).isMainTag,
           isBm = cat.tags.get(b).isMainTag;
