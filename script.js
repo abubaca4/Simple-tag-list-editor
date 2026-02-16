@@ -88,8 +88,7 @@ class TagsManager {
     const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24; // По умолчанию 24 часа
     const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
     const isCacheExpired =
-      cacheMeta.lastSuccessfulFetchTime === 0 ||
-      now - cacheMeta.lastSuccessfulFetchTime > maxAgeMs;
+      lastFetchTime === 0 || now - lastFetchTime > maxAgeMs;
 
     // Определяем режим запроса
     // 'no-cache' заставит браузер обратиться к серверу (для проверки ETag/Last-Modified или получения нового файла).
