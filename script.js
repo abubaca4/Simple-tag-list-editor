@@ -82,6 +82,7 @@ class TagsManager {
     const fileName = getParams();
     let cacheMeta = this.getCacheMetadata(fileName);
     const now = Date.now();
+    const lastFetchTime = cacheMeta.lastSuccessfulFetchTime || 0;
 
     // Расчет требуемого времени обновления
     const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24; // По умолчанию 24 часа
@@ -805,7 +806,7 @@ class TagsManager {
       if (cat.type === "ordered") {
         cat.orderedTags.push(targetMain);
       }
-      
+
       tagsAdded = true;
     });
 
