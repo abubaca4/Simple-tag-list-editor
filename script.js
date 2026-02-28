@@ -216,6 +216,8 @@ class TagsManager {
       errTitle: id("errorTitle"),
       app: id("appContainer"),
       input: id("tagsInput"),
+      copyBtn: id("copyBtn"),
+      clearBtn: id("clearBtn"),
       unrecWarn: id("unrecognizedTagsWarning"),
       limitBox: id("limitCheckbox"),
       limitDisp: id("limitDisplay"),
@@ -430,6 +432,24 @@ class TagsManager {
       unrecWarn.classList.add("util-hidden");
       this.parseInput(input.value, true);
       this.updateUI(false);
+    });
+
+    // Обработка клика по кнопке копирования
+    this.dom.copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(this.dom.input.value);
+      } catch (err) {
+        console.error("Ошибка при копировании: ", err);
+      }
+    });
+
+    // Обработка клика по кнопке очистки
+    this.dom.clearBtn.addEventListener("click", () => {
+      this.dom.input.value = "";
+      unrecWarn.classList.add("util-hidden");
+      this.parseInput("", true);
+      this.updateUI(false);
+      this.saveStateToStorage();
     });
 
     // Обработка чекбоксов лимита и дубликатов

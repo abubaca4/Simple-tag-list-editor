@@ -180,11 +180,13 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
-    transition: background-color var(--transition-normal), color var(--transition-normal);
+    transition:
+        background-color var(--transition-normal),
+        color var(--transition-normal);
     cursor: default;
 }
 
@@ -289,7 +291,7 @@ body {
 }
 
 [data-tooltip]:hover::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 100%;
     left: 50%;
@@ -354,6 +356,46 @@ body {
 }
 
 /* Controls */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-wrapper .tags-input {
+    padding-right: 90px; /* Отступ текста, чтобы он не залезал под кнопки */
+}
+
+.input-actions {
+    position: absolute;
+    right: var(--spacing-sm);
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.input-action-button {
+    background: transparent;
+    border: none;
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    color: var(--text-color);
+    opacity: 0.6;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+}
+
+.input-action-button:hover {
+    opacity: 1;
+    background-color: var(--alternative-bg);
+    transform: scale(1.05);
+}
+
 .input-section {
     margin-bottom: var(--spacing-lg);
 }
@@ -833,7 +875,6 @@ body {
 }
 
 @media (max-width: 1200px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 40px);
@@ -842,7 +883,6 @@ body {
 }
 
 @media (max-width: 768px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 30px);
@@ -896,7 +936,6 @@ body {
 }
 
 @media (max-width: 480px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 20px);
