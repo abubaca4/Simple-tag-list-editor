@@ -482,7 +482,9 @@ class TagsManager {
     // Обработка клика по кнопке копирования
     this.dom.copyBtn.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(this.dom.input.value);
+        if (!(this.dom.input.value.replace(/\s+/g, "") == "")) {
+          await navigator.clipboard.writeText(this.dom.input.value);
+        }
       } catch (err) {
         console.error("Ошибка при копировании: ", err);
       }
