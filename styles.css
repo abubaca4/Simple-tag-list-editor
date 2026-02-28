@@ -364,7 +364,7 @@ body {
 }
 
 .input-wrapper .tags-input {
-    padding-right: 90px; /* Отступ текста, чтобы он не залезал под кнопки */
+    padding-right: 80px; /* Отступ текста, чтобы он не залезал под кнопки */
 }
 
 .input-actions {
@@ -380,13 +380,13 @@ body {
     font-size: var(--font-size-lg);
     cursor: pointer;
     color: var(--text-color);
-    opacity: 0.6;
+    opacity: 1.0;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: var(--radius-sm);
 }
 
