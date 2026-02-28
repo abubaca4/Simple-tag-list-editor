@@ -158,6 +158,7 @@ class TagsManager {
       this.showUI();
       // Инициализирует внутренние структуры данных (Map'ы и индексы)
       this.initCategories();
+      this.resolveRequiredTags();
       // Рендерит HTML-структуру тегов и навигации
       this.render();
 
@@ -329,6 +330,50 @@ class TagsManager {
         });
       });
       this.categories.set(cat.name, catData);
+    });
+  }
+
+  resolveRequiredTags() {
+    this.categories.forEach((catData) => {
+      catData.tags.forEach((tag) => {
+        // Если в конфиге нет зависимостей, пропускаем
+        if (!tag.requiredTag) return;
+
+        // Приводим всё к массиву для единообразной обработки (случаи 1, 2 и 3)
+        const rawRequirements = Array.isArray(tag.requiredTag)
+          ? tag.requiredTag
+          : [tag.requiredTag];
+
+        tag.resolvedRequiredTags = [];
+
+        rawRequirements.forEach((req) => {
+          let targetCat = null;
+          let targetTagName = "";
+
+          if (typeof req === "string") {
+            // Случай 1: Просто строка — ищем в текущей категории
+            targetCat = catData;
+            targetTagName = req;
+          } else if (
+            typeof req === "object" &&
+            req !== null &&
+            req.category &&
+            req.name
+          ) {
+            // Случай 2: Объект — ищем в указанной категории
+            targetCat = this.categories.get(req.category);
+            targetTagName = req.name;
+          }
+
+          // Если категория существует и в ней есть такой тег — сохраняем "ссылку"
+          if (targetCat && targetCat.tags.has(targetTagName)) {
+            tag.resolvedRequiredTags.push({
+              category: targetCat,
+              tagName: targetTagName,
+            });
+          }
+        });
+      });
     });
   }
 
@@ -759,8 +804,8 @@ class TagsManager {
     }
 
     // Если тег сейчас выбран и у него есть требование другого тега
-    if (cat.selectedTags.has(main) && tag.requiredTag) {
-      this.processRequiredTag(cat, tag.requiredTag);
+    if (cat.selectedTags.has(main) && tag.resolvedRequiredTags) {
+      this.processRequiredTag(tag.resolvedRequiredTags);
     }
 
     // ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА ЛИМИТА СИМВОЛОВ - только если лимит задан
@@ -795,48 +840,32 @@ class TagsManager {
     this.updateAlt();
   }
 
-  // Обрабатывает логику обязательного связанного тега (поддерживает строку или массив)
-  processRequiredTag(cat, requiredTags) {
-    // Нормализуем входные данные: превращаем одиночную строку в массив
-    const targets = Array.isArray(requiredTags) ? requiredTags : [requiredTags];
-
-    let tagsAdded = false;
-
-    targets.forEach((targetName) => {
-      // Ищем тег в текущей категории
-      const targetTag = cat.tags.get(targetName);
-
-      // Если тег не найден в этой категории, игнорируем
-      if (!targetTag) return;
-
+  // Обрабатывает логику обязательного связанного тега
+  processRequiredTag(resolvedTags) {
+    resolvedTags.forEach(({ category, tagName }) => {
+      const targetTag = category.tags.get(tagName);
       const targetMain = targetTag.mainName;
 
-      // Если тег уже выбран, пропускаем (чтобы не сбивать вариант, если он уже выбран)
-      if (cat.selectedTags.has(targetMain)) return;
+      // Если тег уже выбран (в любом варианте), ничего не делаем
+      if (category.selectedTags.has(targetMain)) return;
 
-      // Добавляем тег в выбранные
-      cat.selectedTags.add(targetMain);
-      this.selectedTags.set(targetMain, cat.name);
+      // Активируем тег
+      category.selectedTags.add(targetMain);
+      this.selectedTags.set(targetMain, category.name);
+      category.selectedVariants.set(targetMain, tagName);
 
-      // Устанавливаем вариант (имя, которое было указано в requiredTag)
-      cat.selectedVariants.set(targetMain, targetName);
-
-      // Если категория упорядоченная, добавляем в список
-      if (cat.type === "ordered") {
-        cat.orderedTags.push(targetMain);
+      if (category.type === "ordered") {
+        category.orderedTags.push(targetMain);
+        category.orderedTags.sort((a, b) => {
+          const isAm = category.tags.get(a).isMainTag,
+            isBm = category.tags.get(b).isMainTag;
+          return isAm === isBm ? 0 : isAm ? -1 : 1;
+        });
       }
 
-      tagsAdded = true;
+      // Обновляем визуальное состояние категории, в которой находится активированный тег
+      this.updateCategoryDOM(category);
     });
-
-    // Сортируем список только один раз, если были добавлены новые теги и категория упорядоченная
-    if (tagsAdded && cat.type === "ordered") {
-      cat.orderedTags.sort((a, b) => {
-        const isAm = cat.tags.get(a).isMainTag,
-          isBm = cat.tags.get(b).isMainTag;
-        return isAm === isBm ? 0 : isAm ? -1 : 1;
-      });
-    }
   }
 
   // Парсит входную строку из поля ввода, обновляя внутреннее состояние
