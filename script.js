@@ -11,6 +11,7 @@ class TagsManager {
     this.knownAsMap = new Map();
     this.altTagSearchMap = new Map();
     this.unrecognizedTags = [];
+    this.unrecognizedIgnoreSet = new Set();
     this.isHeaderPinned = true;
     this.dom = {};
     this.scrollTicking = false;
@@ -136,6 +137,12 @@ class TagsManager {
       // Ожидает завершения загрузки данных
       try {
         this.tagsData = await this.dataPromise;
+
+        if (Array.isArray(this.tagsData.unrecognizedIgnore)) {
+          this.unrecognizedIgnoreSet = new Set(
+            this.tagsData.unrecognizedIgnore.map((t) => t.trim().toLowerCase()),
+          );
+        }
 
         // Проверяем наличие лимита символов в конфигурации
         this.hasCharacterLimit =
@@ -948,7 +955,9 @@ class TagsManager {
     });
 
     this.unrecognizedTags = rawTags.filter(
-      (_, index) => !recognizedIndices.has(index),
+      (tagStr, index) =>
+        !recognizedIndices.has(index) &&
+        !this.unrecognizedIgnoreSet.has(tagStr.toLowerCase()),
     );
 
     // Перезаписывает поле ввода форматированной строкой
