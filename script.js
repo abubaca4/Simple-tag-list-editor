@@ -219,6 +219,7 @@ class TagsManager {
       input: id("tagsInput"),
       copyBtn: id("copyBtn"),
       clearBtn: id("clearBtn"),
+      copyAltBtn: id("copyAltBtn"),
       unrecWarn: id("unrecognizedTagsWarning"),
       limitBox: id("limitCheckbox"),
       limitDisp: id("limitDisplay"),
@@ -497,6 +498,17 @@ class TagsManager {
       this.parseInput("", true);
       this.updateUI(false);
       this.saveStateToStorage();
+    });
+
+    // Обработка клика по кнопке копирования альтернативных тегов
+    this.dom.copyAltBtn.addEventListener("click", async () => {
+      try {
+        if (!(this.dom.altOut.value.replace(/\s+/g, "") == "")) {
+          await navigator.clipboard.writeText(this.dom.altOut.value);
+        }
+      } catch (err) {
+        console.error("Ошибка при копировании альтернативных тегов: ", err);
+      }
     });
 
     // Обработка чекбоксов лимита и дубликатов

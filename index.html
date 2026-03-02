@@ -177,11 +177,23 @@
                             Убрать дубликаты альтернативных тегов
                         </label>
                     </div>
-                    <textarea
-                        id="alternativeOutput"
-                        class="alternative-output util-input-base"
-                        readonly
-                    ></textarea>
+                    <div class="input-wrapper">
+                        <textarea
+                            id="alternativeOutput"
+                            class="alternative-output util-input-base"
+                            readonly
+                        ></textarea>
+                        <div class="input-actions alt-actions">
+                            <button
+                                id="copyAltBtn"
+                                class="input-action-button"
+                                type="button"
+                                title="Скопировать в буфер"
+                            >
+                                🗍
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="tagsContainer" class="tags-container"></div>
