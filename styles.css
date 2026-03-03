@@ -239,6 +239,31 @@ body {
     white-space: nowrap;
 }
 
+.category-nav-item.nav-item-error {
+    border-color: var(--limit-exceeded);
+    color: var(--limit-exceeded);
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+@keyframes error-pulse {
+    0% {
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--limit-exceeded), transparent 40%);
+    }
+    70% {
+        box-shadow: 0 0 0 6px
+            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+    }
+    100% {
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+    }
+}
+
+.category-nav-item.nav-item-error {
+    animation: error-pulse 2s infinite;
+}
+
 .util-tag-base:hover,
 .category-nav-item:hover,
 .pin-header-button:hover {
@@ -449,7 +474,9 @@ body {
 .alternative-output {
     height: 80px;
     resize: none;
-    padding-right: calc(40px + 10px); /* Отступ текста, чтобы он не залезал под кнопку */
+    padding-right: calc(
+        40px + 10px
+    ); /* Отступ текста, чтобы он не залезал под кнопку */
 }
 
 /* Выравнивание кнопки по верхнему краю для многострочного поля */
@@ -481,6 +508,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
 .category-title {
@@ -798,6 +826,7 @@ body {
     text-align: left;
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-normal);
+    line-height: 1.1;
 }
 
 .reference-content p {
@@ -824,6 +853,16 @@ body {
     outline: 2px solid var(--border-focus-color);
     outline-offset: 2px;
     border-radius: 2px;
+}
+
+.category .reference-content {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    border-bottom: 2px solid var(--category-border);
+    padding: var(--spacing-md) 0;
+    margin-bottom: var(--spacing-md);
 }
 
 /* Блок для веб-ссылок */

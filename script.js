@@ -174,7 +174,9 @@ class TagsManager {
 
       // 2. Если есть сохранение, используем его. Если нет, берем то, что в HTML (value="" у input)
       const initialValue =
-        (savedState !== null && savedState.trim() !== "") ? savedState : this.dom.input.value;
+        savedState !== null && savedState.trim() !== ""
+          ? savedState
+          : this.dom.input.value;
 
       if (initialValue) {
         this.parseInput(initialValue, true);
@@ -245,6 +247,7 @@ class TagsManager {
       refContent: id("referenceContent"),
       themeToggleBtn: id("themeToggleButton"),
       webLinksNav: id("webLinksNav"),
+      globalCatWarn: id("globalCategoryWarning"),
       themeIcon: document.querySelector(".theme-icon"),
       themeText: document.querySelector(".theme-text"),
     };
@@ -640,13 +643,36 @@ class TagsManager {
         );
       }
 
+      let refContent = null;
+      if (catData.reference) {
+        const refButton = this.el(
+          "button",
+          "util-tag-base pin-header-button",
+          "Справка",
+        );
+        left.append(refButton);
+
+        refContent = this.el("div", "reference-content util-hidden", "");
+        refContent.innerHTML = catData.reference;
+
+        refButton.onclick = () => {
+          const isHidden = refContent.classList.toggle("util-hidden");
+          refButton.textContent = isHidden ? "Справка" : "Скрыть";
+          if (this.isHeaderPinned) this.updateHeaderOffset();
+        };
+      }
+
       const scrollTop = this.el("button", "category-scroll-top", "˄", {
         "aria-label": "Наверх",
       });
       scrollTop.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
       titleRow.append(left, scrollTop);
-      catDiv.append(titleRow, this.el("div", "category-warning util-hidden"));
+      const warnEl = this.el("div", "category-warning util-hidden");
+      catData.warnDom = warnEl;
+      catDiv.append(titleRow);
+      if (refContent) catDiv.append(refContent);
+      catDiv.append(warnEl);
 
       const subgroups = this.groupTags(catData);
       subgroups.forEach((tags, subName) => {
@@ -679,6 +705,7 @@ class TagsManager {
       // Создание элемента навигации
       const navItem = this.el("button", "category-nav-item", catName);
       navItem.onclick = () => this.scrollToCat(catName);
+      catData.navBtn = navItem;
       navFragment.appendChild(navItem);
     });
 
@@ -1054,6 +1081,7 @@ class TagsManager {
   updateCategoryDOM(cat) {
     if (!cat.dom) return;
     this.updateButtonsInContainer(cat.dom, cat);
+    this.refreshGlobalWarning();
   }
 
   // Обновляет все кнопки во всех категориях
@@ -1061,6 +1089,7 @@ class TagsManager {
     this.categories.forEach((cat) => {
       if (cat.dom) this.updateButtonsInContainer(cat.dom, cat);
     });
+    this.refreshGlobalWarning();
   }
 
   // Основная функция для обновления классов кнопок и предупреждений внутри контейнера категории
@@ -1104,7 +1133,7 @@ class TagsManager {
     });
 
     // Логика предупреждений о требованиях категории
-    const warn = container.querySelector(".category-warning");
+    const warn = cat.warnDom;
     let showWarn = false;
     let txt = "";
 
@@ -1121,6 +1150,11 @@ class TagsManager {
 
     if (warn.textContent !== txt) warn.textContent = txt;
     warn.classList.toggle("util-hidden", !showWarn);
+    if (cat.navBtn) {
+      cat.navBtn.classList.toggle("nav-item-error", showWarn);
+    }
+    cat.hasError = showWarn;
+    return showWarn;
   }
 
   // Генерирует и отображает строку альтернативных тегов
@@ -1215,6 +1249,22 @@ class TagsManager {
       window.innerWidth > this.dom.main.offsetWidth + 200 &&
       window.scrollY > 100;
     this.dom.scrollHints.forEach((h) => h.classList.toggle("visible", vis));
+  }
+
+  refreshGlobalWarning() {
+    const hasAnyError = [...this.categories.values()].some(
+      (cat) => cat.hasError,
+    );
+
+    const isHidden = this.dom.globalCatWarn.classList.contains("util-hidden");
+
+    // Показываем/скрываем блок
+    this.dom.globalCatWarn.classList.toggle("util-hidden", !hasAnyError);
+
+    // Если видимость изменилась и хедер закреплен, обновляем отступ контента
+    if (isHidden !== !hasAnyError && this.isHeaderPinned) {
+      this.updateHeaderOffset();
+    }
   }
 
   // Показывает основной интерфейс приложения
