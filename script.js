@@ -174,7 +174,7 @@ class TagsManager {
 
       // 2. Если есть сохранение, используем его. Если нет, берем то, что в HTML (value="" у input)
       const initialValue =
-        savedState !== null ? savedState : this.dom.input.value;
+        (savedState !== null && savedState.trim() !== "") ? savedState : this.dom.input.value;
 
       if (initialValue) {
         this.parseInput(initialValue, true);
@@ -485,6 +485,7 @@ class TagsManager {
       unrecWarn.classList.add("util-hidden");
       this.parseInput(input.value, true);
       this.updateUI(false);
+      this.saveStateToStorage();
     });
 
     // Обработка клика по кнопке копирования
