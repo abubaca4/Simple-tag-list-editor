@@ -449,12 +449,13 @@ body {
 .alternative-output {
     height: 80px;
     resize: none;
-    padding-right: 40px; /* Отступ текста, чтобы он не залезал под кнопку */
+    padding-right: calc(40px + 10px); /* Отступ текста, чтобы он не залезал под кнопку */
 }
 
 /* Выравнивание кнопки по верхнему краю для многострочного поля */
 .alt-actions {
     top: var(--spacing-sm);
+    right: calc(var(--spacing-sm) + 10px);
 }
 
 /* Categories */
