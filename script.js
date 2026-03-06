@@ -153,6 +153,9 @@ class TagsManager {
         // Скрываем input-section, если указано в конфигурации
         if (this.tagsData.hideInputSection) {
           this.dom.input.classList.add("util-hidden");
+          if (this.dom.copyBtn) {
+            this.dom.copyBtn.classList.add("util-hidden");
+          }
         }
 
         this.initWebLinks();
