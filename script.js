@@ -20,6 +20,12 @@ class TagsManager {
     this.themeIcons = { auto: "🌓", dark: "🌙", light: "☀️" };
     this.themeTexts = { auto: "Авто", dark: "Тёмная", light: "Светлая" };
 
+    // Управление режимом отображения тегов: "text" или "image".
+    // Исходное значение устанавливается после загрузки конфига.
+    this.displayMode = "text";
+    this.imageTagCount = 0; // сколько кнопок имеют картинку
+    this.isImageOnly = false; // true если в конфиге imageMode=imageOnly
+
     // Флаг для проверки наличия лимита
     this.hasCharacterLimit = false;
 
@@ -150,6 +156,15 @@ class TagsManager {
           this.tagsData.characterLimit !== null &&
           this.tagsData.characterLimit > 0;
 
+        // Режим отображения тегов (textFirst, imageFirst, imageOnly)
+        const mode = (this.tagsData.imageMode || "textFirst").toString();
+        if (mode === "textFirst") {
+          this.displayMode = "text";
+        } else {
+          this.displayMode = "image";
+        }
+        this.isImageOnly = mode === "imageOnly";
+
         // Скрываем input-section, если указано в конфигурации
         if (this.tagsData.hideInputSection) {
           this.dom.input.classList.add("util-hidden");
@@ -171,6 +186,8 @@ class TagsManager {
       this.resolveRequiredTags();
       // Рендерит HTML-структуру тегов и навигации
       this.render();
+      // сразу после рендера посмотрим, нужна ли кнопка переключения
+      this.updateDisplayToggleVisibility();
 
       // 1. Пробуем загрузить сохраненное состояние
       const savedState = this.loadStateFromStorage();
@@ -249,6 +266,7 @@ class TagsManager {
       refToggleBtn: id("toggleReferenceButton"),
       refContent: id("referenceContent"),
       themeToggleBtn: id("themeToggleButton"),
+      displayModeBtn: id("displayModeButton"),
       webLinksNav: id("webLinksNav"),
       globalCatWarn: id("globalCategoryWarning"),
       themeIcon: document.querySelector(".theme-icon"),
@@ -291,8 +309,8 @@ class TagsManager {
         const main = names[0];
         if (names.length > 1) catData.variantGroups.set(main, names);
 
-        // Если имя только одно и есть поле image, сохраняем путь. Иначе null.
-        const imageUrl = names.length === 1 && t.image ? t.image : null;
+        // Если задано поле image, сохраняем путь.
+        const imageUrl = t.image || null;
 
         names.forEach((name) => {
           catData.tags.set(name, {
@@ -481,6 +499,7 @@ class TagsManager {
       header,
       container,
       themeToggleBtn,
+      displayModeBtn,
       unrecWarn,
       refToggleBtn,
       refContent,
@@ -546,7 +565,13 @@ class TagsManager {
         .closest(".category")
         .querySelector(".category-title").textContent;
 
-      const tagName = btn.dataset.name || btn.textContent;
+      let tagName;
+      if (e.target.tagName === "IMG" && btn.dataset.mainname) {
+        // при клике на картинку используем основное имя (первый вариант)
+        tagName = btn.dataset.mainname;
+      } else {
+        tagName = btn.dataset.name || btn.textContent;
+      }
 
       this.handleTagClick(catName, tagName);
     });
@@ -560,6 +585,11 @@ class TagsManager {
 
     const savedPinned = localStorage.getItem("headerPinned");
     this.isHeaderPinned = savedPinned !== null ? JSON.parse(savedPinned) : true;
+
+    // Переключение режима отображения тегов
+    if (displayModeBtn) {
+      displayModeBtn.addEventListener("click", () => this.toggleTagDisplayMode());
+    }
 
     // Переключение темы
     themeToggleBtn.addEventListener("click", () => this.toggleTheme());
@@ -607,6 +637,8 @@ class TagsManager {
 
   // Генерирует HTML-структуру категорий и кнопок тегов
   render() {
+    // при каждом рендере пересчитываем сколько кнопок имеют картинки
+    this.imageTagCount = 0;
     const { container, navList, refSection, refContent, refToggleBtn } =
       this.dom;
 
@@ -722,21 +754,40 @@ class TagsManager {
 
   // Создает кнопку тега с заданными параметрами
   createBtn(tag) {
-    const btnText = tag.image ? "" : tag.name;
-
+    // элемент само по себе остаётся <button>, но внутри у нас два
+    // блока: span.tag-text и (если задано) img.tag-image.
     let cssClass = `tag-button util-tag-base${tag.isMainTag ? " main-tag" : ""}`;
     if (tag.image) cssClass += " has-image";
 
-    const btn = this.el("button", cssClass, btnText, {
+    const btn = this.el("button", cssClass, "", {
       "data-tooltip": tag.description || "",
-      "data-name": tag.name, // <--- ВАЖНОЕ ИЗМЕНЕНИЕ: сохраняем имя в атрибут
+      "data-name": tag.name,
+      "data-mainname": tag.mainName || tag.name,
     });
 
+    // текстовая часть
+    const textSpan = document.createElement("span");
+    textSpan.className = "tag-text";
+    textSpan.textContent = tag.name;
+    btn.appendChild(textSpan);
+
+    // графика, если есть
     if (tag.image) {
       const img = document.createElement("img");
+      img.className = "tag-image";
       img.src = tag.image;
       img.alt = tag.name;
       btn.appendChild(img);
+
+      // увеличиваем счётчик, чтобы потом решить показывать переключатель
+      this.imageTagCount += 1;
+
+      // начальная видимость в зависимости от режима
+      if (this.displayMode === "text") {
+        img.classList.add("util-hidden");
+      } else {
+        textSpan.classList.add("util-hidden");
+      }
     }
 
     if (!tag.domButtons) {
@@ -767,6 +818,59 @@ class TagsManager {
     if (this.dom.themeText)
       this.dom.themeText.textContent = this.themeTexts[this.themeState];
     this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
+  }
+
+  // Показывает или прячет кнопку переключения режима и устанавливает иконку
+  updateDisplayToggleVisibility() {
+    const btn = this.dom.displayModeBtn;
+    if (!btn) return;
+    if (this.isImageOnly || this.imageTagCount === 0) {
+      btn.classList.add("util-hidden");
+      return;
+    }
+    btn.classList.remove("util-hidden");
+    this.updateDisplayToggleIcon();
+  }
+
+  // Меняет иконку на кнопке, показывающую, во что переключится по клику
+  updateDisplayToggleIcon() {
+    const btn = this.dom.displayModeBtn;
+    if (!btn) return;
+    // 🖼️ — перейти в графический режим, 🔤 — в текстовый
+    btn.textContent = this.displayMode === "text" ? "🖼️" : "🔤";
+    btn.title =
+      this.displayMode === "text"
+        ? "Показать изображения"
+        : "Показать текст";
+  }
+
+  // Переключает режим текста/изображений у всех кнопок
+  toggleTagDisplayMode() {
+    this.displayMode = this.displayMode === "text" ? "image" : "text";
+    // запомним предпочтение (необязательно)
+    localStorage.setItem("displayMode", this.displayMode);
+    this.updateDisplayToggleIcon();
+
+    // обновляем у каждой кнопки с картинкой
+    this.categories.forEach((cat) => {
+      cat.tags.forEach((tag) => {
+        if (tag.image && tag.domButtons) {
+          tag.domButtons.forEach((btn) => {
+            const textElem = btn.querySelector(".tag-text");
+            const imgElem = btn.querySelector(".tag-image");
+            if (textElem && imgElem) {
+              if (this.displayMode === "text") {
+                textElem.classList.remove("util-hidden");
+                imgElem.classList.add("util-hidden");
+              } else {
+                textElem.classList.add("util-hidden");
+                imgElem.classList.remove("util-hidden");
+              }
+            }
+          });
+        }
+      });
+    });
   }
 
   // Группирует теги в подгруппы для рендеринга
@@ -1093,6 +1197,8 @@ class TagsManager {
       if (cat.dom) this.updateButtonsInContainer(cat.dom, cat);
     });
     this.refreshGlobalWarning();
+    // кнопка переключения показана/скрыта при общем обновлении
+    this.updateDisplayToggleVisibility();
   }
 
   // Основная функция для обновления классов кнопок и предупреждений внутри контейнера категории

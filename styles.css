@@ -247,16 +247,15 @@ body {
 
 @keyframes error-pulse {
     0% {
-        box-shadow: 0 0 0 0
-            color-mix(in srgb, var(--limit-exceeded), transparent 40%);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--limit-exceeded), transparent 40%);
     }
+
     70% {
-        box-shadow: 0 0 0 6px
-            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--limit-exceeded), transparent 100%);
     }
+
     100% {
-        box-shadow: 0 0 0 0
-            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--limit-exceeded), transparent 100%);
     }
 }
 
@@ -389,7 +388,8 @@ body {
 }
 
 .input-wrapper .tags-input {
-    padding-right: 80px; /* Отступ текста, чтобы он не залезал под кнопки */
+    padding-right: 80px;
+    /* Отступ текста, чтобы он не залезал под кнопки */
 }
 
 .input-actions {
@@ -474,9 +474,8 @@ body {
 .alternative-output {
     height: 80px;
     resize: none;
-    padding-right: calc(
-        40px + 10px
-    ); /* Отступ текста, чтобы он не залезал под кнопку */
+    padding-right: calc(40px + 10px);
+    /* Отступ текста, чтобы он не залезал под кнопку */
 }
 
 /* Выравнивание кнопки по верхнему краю для многострочного поля */
@@ -639,15 +638,13 @@ body {
 
 /* Стили для тегов с картинками */
 .tag-button.has-image {
-    padding: 4px;
-    /* Уменьшаем отступы, чтобы картинка была крупнее */
+    padding: var(--spacing-sm) var(--spacing-md);
+    /* Делаем padding таким же, как у обычных тегов */
     display: inline-flex;
     align-items: center;
     justify-content: center;
     vertical-align: middle;
-    height: 40px;
-    /* Фиксируем высоту для красоты, можно изменить */
-    min-width: 40px;
+    /* Убираем фиксированную высоту и ширину, чтобы теги выглядели одинаково */
 }
 
 .tag-button.has-image img {
@@ -660,10 +657,21 @@ body {
     /* Чтобы клик по картинке проходил в кнопку */
 }
 
+/* Внутренние элементы тега: текст и картинка. */
+.tag-text {
+    display: inline-block;
+}
+
+.tag-image {
+    display: inline-block;
+    max-height: 2em;
+    vertical-align: middle;
+}
+
 /* Корректировка кружка с порядковым номером для картинок */
 .tag-button.has-image.ordered::after {
-    top: -6px;
-    right: -6px;
+    top: -8px;
+    right: -8px;
 }
 
 .variant-group {
@@ -921,6 +929,7 @@ body {
 }
 
 @media (max-width: 1200px) {
+
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 40px);
@@ -929,6 +938,7 @@ body {
 }
 
 @media (max-width: 768px) {
+
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 30px);
@@ -982,6 +992,7 @@ body {
 }
 
 @media (max-width: 480px) {
+
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 20px);
