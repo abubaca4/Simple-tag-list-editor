@@ -836,8 +836,7 @@ class TagsManager {
   updateDisplayToggleIcon() {
     const btn = this.dom.displayModeBtn;
     if (!btn) return;
-    // 🖼️ — перейти в графический режим, 🔤 — в текстовый
-    btn.textContent = this.displayMode === "text" ? "🖼️" : "🔤";
+    btn.textContent = this.displayMode === "text" ? "🔤" : "🖼️";
     btn.title =
       this.displayMode === "text"
         ? "Показать изображения"
