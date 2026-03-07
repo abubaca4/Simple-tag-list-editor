@@ -615,8 +615,8 @@ class TagsManager {
     window.addEventListener("resize", updateLayoutDebounced);
     window.addEventListener("scroll", updateLayoutDebounced);
 
-    // Обработка клика вне основных контейнеров (для скролла наверх)
-    document.body.addEventListener("click", (e) => {
+    // Обработка нажатия мыши вне основных контейнеров (для скролла наверх)
+    document.body.addEventListener("mousedown", (e) => {
       if (
         !main.contains(e.target) &&
         !header.contains(e.target) &&
