@@ -846,8 +846,8 @@ class TagsManager {
   updateDisplayToggleIcon() {
     const btn = this.dom.displayModeBtn;
     if (!btn) return;
-    const iconSpan = btn.querySelector(".toggle-icon");
-    const textSpan = btn.querySelector(".toggle-text");
+    const iconSpan = this.dom.displayIcon;
+    const textSpan = this.dom.displayText;
     const showingText = this.displayMode === "text";
     if (iconSpan) iconSpan.textContent = showingText ? "🔤" : "🖼️";
     if (textSpan) textSpan.textContent = showingText ? "Текст" : "Иконки";
