@@ -269,8 +269,18 @@ class TagsManager {
       displayModeBtn: id("displayModeButton"),
       webLinksNav: id("webLinksNav"),
       globalCatWarn: id("globalCategoryWarning"),
-      themeIcon: document.querySelector(".theme-icon"),
-      themeText: document.querySelector(".theme-text"),
+      themeIcon: id("themeToggleButton")
+        ? id("themeToggleButton").querySelector(".toggle-icon")
+        : null,
+      themeText: id("themeToggleButton")
+        ? id("themeToggleButton").querySelector(".toggle-text")
+        : null,
+      displayIcon: id("displayModeButton")
+        ? id("displayModeButton").querySelector(".toggle-icon")
+        : null,
+      displayText: id("displayModeButton")
+        ? id("displayModeButton").querySelector(".toggle-text")
+        : null,
     };
   }
 
@@ -817,7 +827,8 @@ class TagsManager {
       this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
     if (this.dom.themeText)
       this.dom.themeText.textContent = this.themeTexts[this.themeState];
-    this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
+    if (this.dom.themeToggleBtn)
+      this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
   }
 
   // Показывает или прячет кнопку переключения режима и устанавливает иконку
@@ -832,15 +843,15 @@ class TagsManager {
     this.updateDisplayToggleIcon();
   }
 
-  // Меняет иконку на кнопке, показывающую, во что переключится по клику
   updateDisplayToggleIcon() {
     const btn = this.dom.displayModeBtn;
     if (!btn) return;
-    btn.textContent = this.displayMode === "text" ? "🔤" : "🖼️";
-    btn.title =
-      this.displayMode === "text"
-        ? "Показать изображения"
-        : "Показать текст";
+    const iconSpan = btn.querySelector(".toggle-icon");
+    const textSpan = btn.querySelector(".toggle-text");
+    const showingText = this.displayMode === "text";
+    if (iconSpan) iconSpan.textContent = showingText ? "🔤" : "🖼️";
+    if (textSpan) textSpan.textContent = showingText ? "Текст" : "Иконки";
+    btn.title = showingText ? "Показать изображения" : "Показать текст";
   }
 
   // Переключает режим текста/изображений у всех кнопок

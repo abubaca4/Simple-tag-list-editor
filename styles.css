@@ -756,7 +756,7 @@ body {
     border-width: 2px;
 }
 
-.theme-toggle-button {
+.toggle-button {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -764,11 +764,11 @@ body {
     transition: all var(--transition-normal);
 }
 
-.theme-icon {
+.toggle-icon {
     font-size: var(--font-size-sm);
 }
 
-.theme-text {
+.toggle-text {
     font-size: var(--font-size-sm);
 }
 
@@ -969,15 +969,16 @@ body {
         justify-content: space-between;
     }
 
-    .theme-toggle-button .theme-text {
+    /* hide the text portion of any toggle button on small screens */
+    .toggle-button .toggle-text {
         display: none;
     }
 
-    .theme-toggle-button {
+    .toggle-button {
         padding: var(--spacing-xs) var(--spacing-sm);
     }
 
-    .theme-icon {
+    .toggle-icon {
         font-size: var(--font-size-md);
     }
 
