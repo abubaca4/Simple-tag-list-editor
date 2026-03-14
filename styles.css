@@ -471,6 +471,21 @@ body {
     margin-bottom: var(--spacing-xl);
 }
 
+.alternative-name {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-color);
+    padding-right: 10px;
+}
+
+.alternative-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
 .alternative-output {
     height: 80px;
     resize: none;

@@ -1,6 +1,7 @@
 {
   "separator": ", ",
   "alternativeSeparator": " | ",
+  "alternativeName": "Альтернативные теги",
   "webLinks": [
     {
       "name": "Site",

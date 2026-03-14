@@ -254,6 +254,7 @@ class TagsManager {
       limitDisp: id("limitDisplay"),
       altSection: id("alternativeSection"),
       altOut: id("alternativeOutput"),
+      altName: id("alternativeName"),
       dupBox: id("removeDuplicatesCheckbox"),
       container: id("tagsContainer"),
       nav: id("categoriesNav"),
@@ -1280,22 +1281,48 @@ class TagsManager {
   updateAlt() {
     const alts = [];
     const seen = new Set();
+    let hasDuplicates = false;
 
+    // Сначала собираем все альтернативы и проверяем на дубликаты
     this.processSelectedTags((_, tagObj) => {
       if (tagObj.alternative) {
         const norm = tagObj.alternative
           .trim()
           .toLowerCase()
           .replace(/\s+/g, " ");
-        // Проверка на дубликаты
-        if (!this.dom.dupBox.checked || !seen.has(norm)) {
-          alts.push(tagObj.alternative);
-          seen.add(norm);
+        alts.push(tagObj.alternative);
+        if (seen.has(norm)) {
+          hasDuplicates = true;
         }
+        seen.add(norm);
       }
     });
 
-    const s = alts.join(this.tagsData.alternativeSeparator);
+    // Показываем или скрываем checkbox в зависимости от наличия дубликатов
+    const dupControls = this.dom.dupBox.closest('.alternative-controls');
+    if (hasDuplicates) {
+      dupControls.classList.remove('util-hidden');
+    } else {
+      dupControls.classList.add('util-hidden');
+      this.dom.dupBox.checked = false; // Сбрасываем чекбокс если скрываем
+    }
+
+    // Теперь фильтруем дубликаты если чекбокс отмечен
+    const filteredAlts = [];
+    if (this.dom.dupBox.checked) {
+      seen.clear();
+      alts.forEach(alt => {
+        const norm = alt.trim().toLowerCase().replace(/\s+/g, " ");
+        if (!seen.has(norm)) {
+          filteredAlts.push(alt);
+          seen.add(norm);
+        }
+      });
+    } else {
+      filteredAlts.push(...alts);
+    }
+
+    const s = filteredAlts.join(this.tagsData.alternativeSeparator);
 
     // ВСЕГДА обновляем видимость секции в зависимости от наличия текста
     const shouldBeVisible = s.length > 0;
@@ -1310,6 +1337,14 @@ class TagsManager {
     // Обновляем значение только если оно изменилось
     if (this.dom.altOut.value !== s) {
       this.dom.altOut.value = s;
+    }
+
+    // Обновляем alternativeName
+    if (this.tagsData.alternativeName && shouldBeVisible) {
+      this.dom.altName.textContent = this.tagsData.alternativeName;
+      this.dom.altName.classList.remove('util-hidden');
+    } else {
+      this.dom.altName.classList.add('util-hidden');
     }
 
     // Обновление смещения хедера при изменении видимости секции
