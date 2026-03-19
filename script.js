@@ -877,8 +877,6 @@ class TagsManager {
       : headerHeight + 8;
 
     this.displayMode = this.displayMode === "text" ? "image" : "text";
-    // запомним предпочтение (необязательно)
-    localStorage.setItem("displayMode", this.displayMode);
     this.updateDisplayToggleIcon();
 
     // обновляем у каждой кнопки с картинкой
