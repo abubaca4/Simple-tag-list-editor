@@ -857,6 +857,25 @@ class TagsManager {
 
   // Переключает режим текста/изображений у всех кнопок
   toggleTagDisplayMode() {
+    const headerHeight = this.dom.header && this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
+
+    const findFirstVisibleButton = () => {
+      const buttons = this.dom.container.querySelectorAll(".tag-button");
+      const viewportTop = headerHeight;
+      for (const btn of buttons) {
+        const rect = btn.getBoundingClientRect();
+        if (rect.bottom > viewportTop && rect.top < window.innerHeight) {
+          return btn;
+        }
+      }
+      return null;
+    };
+
+    const firstVisibleButton = findFirstVisibleButton();
+    const desiredOffset = firstVisibleButton
+      ? Math.max(headerHeight + 8, firstVisibleButton.getBoundingClientRect().top)
+      : headerHeight + 8;
+
     this.displayMode = this.displayMode === "text" ? "image" : "text";
     // запомним предпочтение (необязательно)
     localStorage.setItem("displayMode", this.displayMode);
@@ -881,6 +900,18 @@ class TagsManager {
           });
         }
       });
+    });
+
+    requestAnimationFrame(() => {
+      if (firstVisibleButton && firstVisibleButton.isConnected) {
+        const buttonTop = firstVisibleButton.getBoundingClientRect().top + window.scrollY;
+        const targetScroll = Math.max(0, buttonTop - desiredOffset);
+        window.scrollTo({ top: targetScroll, behavior: "auto" });
+      }
+
+      this.updateNavVis();
+      this.updateScrollHints();
+      if (this.isHeaderPinned) this.updateHeaderOffset();
     });
   }
 
