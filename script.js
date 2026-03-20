@@ -529,6 +529,16 @@ class TagsManager {
       try {
         if (!(this.dom.input.value.replace(/\s+/g, "") == "")) {
           await navigator.clipboard.writeText(this.dom.input.value);
+
+          // Проверяем, виден ли блок с альтернативными тегами
+          if (!this.dom.altSection.classList.contains("util-hidden")) {
+            // Вычисляем отступ с учетом закрепленного хедера
+            const offset = this.isHeaderPinned ? this.dom.header.offsetHeight + 30 : 20;
+            const top = this.dom.altSection.getBoundingClientRect().top + window.scrollY - offset;
+
+            // Плавно прокручиваем к блоку
+            window.scrollTo({ top, behavior: "smooth" });
+          }
         }
       } catch (err) {
         console.error("Ошибка при копировании: ", err);
