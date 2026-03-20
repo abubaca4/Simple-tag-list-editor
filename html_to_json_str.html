@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to JSON Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .converter-section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        .converter-title {
+            text-align: center;
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            margin-bottom: var(--spacing-xl);
+            color: var(--category-title-color);
+        }
+
+        .windows-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .window {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .window-label {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--category-title-color);
+        }
+
+        .window-textarea {
+            width: 100%;
+            height: 300px;
+            padding: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            font-family: 'Courier New', monospace;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            resize: vertical;
+            transition: all var(--transition-normal);
+        }
+
+        .window-textarea:focus {
+            outline: none;
+            border-color: var(--border-focus-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .window-textarea:disabled {
+            background-color: var(--alternative-bg);
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        .result-block {
+            background: var(--container-bg);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .result-label {
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--category-title-color);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .result-content {
+            background: var(--alternative-bg);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            min-height: 150px;
+        }
+
+        .result-content:empty::before {
+            content: "Здесь появится результат...";
+            color: var(--text-color);
+            opacity: 0.5;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .control-button {
+            flex: 1;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .control-button:hover {
+            background-color: var(--alternative-bg);
+            border-color: var(--border-hover-color);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .windows-container {
+                grid-template-columns: 1fr;
+            }
+
+            .window-textarea {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="converter-section">
+        <h1 class="converter-title">🔄 HTML to JSON Converter</h1>
+
+        <div class="windows-container">
+            <!-- Левое окно - редактируемое -->
+            <div class="window">
+                <label class="window-label">📝 HTML Код (редактируемое)</label>
+                <textarea id="htmlInput" class="window-textarea" placeholder="Вставьте HTML код здесь..."></textarea>
+            </div>
+
+            <!-- Правое окно - только для чтения -->
+            <div class="window">
+                <label class="window-label">📋 JSON-совместимый формат</label>
+                <textarea id="jsonOutput" class="window-textarea" disabled
+                    placeholder="Результат отобразится здесь..."></textarea>
+            </div>
+        </div>
+
+        <!-- Блок с результирующим HTML -->
+        <div class="result-block">
+            <div class="result-label">👁 Предпросмотр результата</div>
+            <div class="result-content" id="resultPreview"></div>
+            <div class="control-buttons">
+                <button class="control-button" id="clearButton">🗑 Очистить</button>
+                <button class="control-button" id="copyButton">📋 Копировать JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Элементы DOM
+        const htmlInput = document.getElementById('htmlInput');
+        const jsonOutput = document.getElementById('jsonOutput');
+        const resultPreview = document.getElementById('resultPreview');
+        const clearButton = document.getElementById('clearButton');
+        const copyButton = document.getElementById('copyButton');
+
+        /**
+         * Конвертирует HTML в JSON-совместимый формат
+         * Убирает переносы, использует одинарные кавычки внутри HTML
+         */
+        function convertHtmlToJsonFormat(html) {
+            if (!html.trim()) {
+                return '';
+            }
+
+            // Заменяем двойные кавычки на одинарные в атрибутах
+            let converted = html.replace(/"/g, "'");
+
+            // Убираем все переносы строк, табуляции и лишние пробелы
+            converted = converted
+                .replace(/\n/g, ' ')           // Заменяем переносы на пробел
+                .replace(/\r/g, '')            // Убираем возврат каретки
+                .replace(/\t/g, ' ')           // Заменяем табуляции на пробел
+                .replace(/\s+/g, ' ')          // Заменяем множественные пробелы на один
+                .trim();                       // Убираем пробелы в начале и конце
+
+            return converted;
+        }
+
+        /**
+         * Обновляет все поля при вводе в левое окно
+         */
+        function handleInput() {
+            const htmlCode = htmlInput.value;
+
+            // Конвертируем в JSON-совместимый формат
+            const jsonFormat = convertHtmlToJsonFormat(htmlCode);
+            jsonOutput.value = jsonFormat;
+
+            // Обновляем предпросмотр
+            updatePreview(htmlCode);
+        }
+
+        /**
+         * Обновляет предпросмотр результирующего HTML
+         */
+        function updatePreview(htmlCode) {
+            try {
+                resultPreview.innerHTML = htmlCode || '';
+            } catch (error) {
+                resultPreview.innerHTML = `<span style="color: var(--limit-exceeded);">Ошибка в HTML коде: ${error.message}</span>`;
+            }
+        }
+
+        /**
+         * Очищает все поля
+         */
+        function clearAll() {
+            htmlInput.value = '';
+            jsonOutput.value = '';
+            resultPreview.innerHTML = '';
+        }
+
+        /**
+         * Копирует JSON-совместимый код в буфер обмена
+         */
+        function copyToClipboard() {
+            if (!jsonOutput.value) {
+                alert('Нет текста для копирования');
+                return;
+            }
+
+            navigator.clipboard.writeText(jsonOutput.value).then(() => {
+                // Показываем обратную связь
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '✓ Скопировано!';
+                setTimeout(() => {
+                    copyButton.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                alert('Ошибка при копировании');
+            });
+        }
+
+        // Обработчики событий
+        htmlInput.addEventListener('input', handleInput);
+        clearButton.addEventListener('click', clearAll);
+        copyButton.addEventListener('click', copyToClipboard);
+
+        // Инициализация
+        console.log('HTML to JSON Converter initialized ✓');
+    </script>
+</body>
+
+</html>
