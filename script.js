@@ -260,28 +260,21 @@ class TagsManager {
       nav: id("categoriesNav"),
       navList: id("categoriesNavList"),
       pinBtn: id("pinHeaderButton"),
+      pinText: id("pinHeaderButton").querySelector(".toggle-text"),
       header: document.querySelector(".header-panel"),
       main: id("mainContainer"),
       scrollHints: [id("leftScrollHint"), id("rightScrollHint")],
       refSection: id("referenceSection"),
       refToggleBtn: id("toggleReferenceButton"),
       refContent: id("referenceContent"),
-      themeToggleBtn: id("themeToggleButton"),
-      displayModeBtn: id("displayModeButton"),
       webLinksNav: id("webLinksNav"),
       globalCatWarn: id("globalCategoryWarning"),
-      themeIcon: id("themeToggleButton")
-        ? id("themeToggleButton").querySelector(".toggle-icon")
-        : null,
-      themeText: id("themeToggleButton")
-        ? id("themeToggleButton").querySelector(".toggle-text")
-        : null,
-      displayIcon: id("displayModeButton")
-        ? id("displayModeButton").querySelector(".toggle-icon")
-        : null,
-      displayText: id("displayModeButton")
-        ? id("displayModeButton").querySelector(".toggle-text")
-        : null,
+      themeToggleBtn: id("themeToggleButton"),
+      themeIcon: id("themeToggleButton").querySelector(".toggle-icon"),
+      themeText: id("themeToggleButton").querySelector(".toggle-text"),
+      displayModeBtn: id("displayModeButton"),
+      displayIcon: id("displayModeButton").querySelector(".toggle-icon"),
+      displayText: id("displayModeButton").querySelector(".toggle-text"),
     };
   }
 
@@ -855,14 +848,12 @@ class TagsManager {
   }
 
   updateDisplayToggleIcon() {
-    const btn = this.dom.displayModeBtn;
-    if (!btn) return;
-    const iconSpan = this.dom.displayIcon;
-    const textSpan = this.dom.displayText;
+    const { displayModeBtn, displayIcon, displayText } = this.dom;
+    if (!displayModeBtn) return;
     const showingText = this.displayMode === "text";
-    if (iconSpan) iconSpan.textContent = showingText ? "🔤" : "🖼️";
-    if (textSpan) textSpan.textContent = showingText ? "Текст" : "Иконки";
-    btn.title = showingText ? "Показать изображения" : "Показать текст";
+    displayIcon.textContent = showingText ? "🔤" : "🖼️";
+    displayText.textContent = showingText ? "Текст" : "Иконки";
+    displayModeBtn.title = showingText ? "Показать изображения" : "Показать текст";
   }
 
   // Переключает режим текста/изображений у всех кнопок
@@ -1418,12 +1409,12 @@ class TagsManager {
 
   // Обновляет визуальное состояние кнопки закрепления и самого хедера
   updatePinState() {
-    const { pinBtn, header, main } = this.dom;
+    const { pinBtn, header, main, pinText } = this.dom;
     const act = this.isHeaderPinned;
     pinBtn.classList.toggle("active", act);
     header.classList.toggle("pinned", act);
     main.classList.toggle("has-pinned-header", act);
-    pinBtn.textContent = act ? "Закреплено" : "Закрепить окно";
+    pinText.textContent = act ? "Закреплено" : "Закрепить";
     this.updateNavVis();
     this.updateScrollHints();
     this.updateHeaderOffset();
