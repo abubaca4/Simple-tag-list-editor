@@ -1543,9 +1543,10 @@ class TagsManager {
     this.categories.forEach((cat) => {
       cat.tags.forEach((tag) => {
         // Проверяем наличие описания и вхождение искомой строки
-        if ((Array.isArray(tag.name) ? tag.name.some(str => str.toLowerCase().includes(query)) : tag.name.toLowerCase().includes(query)) || (tag.description && tag.description.toLowerCase().includes(query))) {
+        if ([tag.name].flat().some(name => name.toLowerCase().includes(query)) ||
+          tag.description?.toLowerCase().includes(query)) {
           // Если у тега есть сгенерированная DOM-кнопка (берем первую)
-          if (tag.domButtons && tag.domButtons.length > 0) {
+          if (tag.domButtons?.length > 0) {
             this.searchResults.push(tag.domButtons[0]);
           }
         }
