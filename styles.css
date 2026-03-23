@@ -187,7 +187,6 @@ body {
     transition:
         background-color var(--transition-normal),
         color var(--transition-normal);
-    cursor: default;
 }
 
 /* Utilities */
@@ -426,7 +425,6 @@ body {
     font-size: var(--font-size-lg);
     cursor: pointer;
     color: var(--text-color);
-    opacity: 1;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
@@ -437,14 +435,12 @@ body {
 }
 
 .input-action-button:hover {
-    opacity: 1;
     background-color: var(--alternative-bg);
     transform: scale(1.05);
 }
 
 .input-action-button:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
     transform: none;
     pointer-events: none;
 }
@@ -681,8 +677,6 @@ body {
 
 /* Стили для тегов с картинками */
 .tag-button.has-image {
-    padding: var(--spacing-sm) var(--spacing-md);
-    /* Делаем padding таким же, как у обычных тегов */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -724,10 +718,6 @@ body {
     margin: var(--spacing-xs) 0;
     background: var(--variant-group-bg);
     transition: all var(--transition-normal);
-}
-
-.variant-group .tag-button {
-    margin: 0;
 }
 
 .variant-description {
