@@ -1056,7 +1056,6 @@ body {
     }
 
     .header-controls-right {
-        flex-direction: column;
         gap: var(--spacing-xs);
     }
 }
