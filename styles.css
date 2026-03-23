@@ -213,7 +213,7 @@ body {
 .util-container-base,
 .header-panel {
     background: var(--container-bg);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md) var(--spacing-xl);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     width: 100%;
@@ -450,14 +450,14 @@ body {
 }
 
 .input-section {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .header-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .checkbox-label {
@@ -762,16 +762,14 @@ body {
 }
 
 .categories-nav {
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
 }
 
 .categories-nav-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
 .categories-nav-title {
@@ -1004,7 +1002,7 @@ body {
     .header-controls {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--spacing-sm);
+        gap: var(--spacing-xs);
     }
 
     .limit-section {
@@ -1012,7 +1010,6 @@ body {
         justify-content: space-between;
     }
 
-    /* hide the text portion of any toggle button on small screens */
     .toggle-button .toggle-text {
         display: none;
     }
@@ -1053,9 +1050,5 @@ body {
 
     .categories-nav-list {
         justify-content: center;
-    }
-
-    .header-controls-right {
-        gap: var(--spacing-xs);
     }
 }
