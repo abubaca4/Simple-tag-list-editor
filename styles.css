@@ -275,8 +275,13 @@ body {
 }
 
 .search-match-active {
-    animation: search-pulse 2s infinite !important;
     border-color: var(--selected-border) !important;
+    animation: search-pulse 2s infinite !important;
+}
+
+.tags-input.search-error-pulse {
+    border-color: var(--limit-exceeded) !important;
+    animation: error-pulse 2s infinite;
 }
 
 .util-tag-base:hover,
@@ -435,6 +440,13 @@ body {
     opacity: 1;
     background-color: var(--alternative-bg);
     transform: scale(1.05);
+}
+
+.input-action-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    pointer-events: none;
 }
 
 .input-section {

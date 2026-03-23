@@ -632,6 +632,13 @@ class TagsManager {
       this.dom.searchInput.addEventListener("input", () => this.performSearch());
       this.dom.searchPrevBtn.addEventListener("click", () => this.navigateSearch(-1));
       this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
+
+      this.dom.searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault(); // Предотвращаем стандартное поведение
+          this.navigateSearch(1); // Переходим к следующему результату
+        }
+      });
     }
 
     // Оптимизированные обработчики скролла и изменения размера окна
@@ -1517,6 +1524,7 @@ class TagsManager {
     this.dom.searchInput.value = "";
     this.searchResults = [];
     this.currentSearchIndex = 0;
+    this.dom.searchInput.classList.remove("search-error-pulse");
     this.updateSearchHighlight();
   }
 
@@ -1527,7 +1535,7 @@ class TagsManager {
     this.currentSearchIndex = 0;
 
     if (!query) {
-      this.updateSearchHighlight();
+      this.clearSearch();
       return;
     }
 
@@ -1543,6 +1551,12 @@ class TagsManager {
         }
       });
     });
+
+    if (this.searchResults.length === 0) {
+      this.dom.searchInput.classList.add("search-error-pulse");
+    } else {
+      this.dom.searchInput.classList.remove("search-error-pulse");
+    }
 
     this.updateSearchHighlight();
   }
@@ -1575,8 +1589,8 @@ class TagsManager {
 
     // 2. Если ничего не найдено, прячем кнопки-стрелки
     if (total === 0) {
-      this.dom.searchPrevBtn.classList.add("util-hidden");
-      this.dom.searchNextBtn.classList.add("util-hidden");
+      this.dom.searchPrevBtn.disabled = true;
+      this.dom.searchNextBtn.disabled = true;
       return;
     }
 
@@ -1593,9 +1607,9 @@ class TagsManager {
       window.scrollTo({ top, behavior: "smooth" });
     }
 
-    // 5. Управляем видимостью стрелок "вверх" и "вниз"
-    this.dom.searchPrevBtn.classList.toggle("util-hidden", this.currentSearchIndex === 0);
-    this.dom.searchNextBtn.classList.toggle("util-hidden", this.currentSearchIndex === total - 1);
+    // 5. Активируем/деактивируем стрелки в зависимости от границ
+    this.dom.searchPrevBtn.disabled = this.currentSearchIndex === 0;
+    this.dom.searchNextBtn.disabled = this.currentSearchIndex === total - 1;
   }
 }
 
