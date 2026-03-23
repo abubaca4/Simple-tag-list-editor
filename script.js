@@ -156,10 +156,7 @@ class TagsManager {
         }
 
         // Проверяем наличие лимита символов в конфигурации
-        this.hasCharacterLimit =
-          this.tagsData.characterLimit !== undefined &&
-          this.tagsData.characterLimit !== null &&
-          this.tagsData.characterLimit > 0;
+        this.hasCharacterLimit = this.tagsData?.characterLimit > 0;
 
         // Режим отображения тегов (textFirst, imageFirst, imageOnly)
         const mode = (this.tagsData.imageMode || "textFirst").toString();
@@ -198,10 +195,7 @@ class TagsManager {
       const savedState = this.loadStateFromStorage();
 
       // 2. Если есть сохранение, используем его. Если нет, берем то, что в HTML (value="" у input)
-      const initialValue =
-        savedState !== null && savedState.trim() !== ""
-          ? savedState
-          : this.dom.input.value;
+      const initialValue = savedState?.trim() ? savedState : this.dom.input.value;
 
       if (initialValue) {
         this.parseInput(initialValue, true);
@@ -322,7 +316,7 @@ class TagsManager {
       };
 
       cat.tags.forEach((t) => {
-        const names = Array.isArray(t.name) ? t.name : [t.name];
+        const names = [t.name].flat();
         const main = names[0];
         if (names.length > 1) catData.variantGroups.set(main, names);
 
@@ -359,7 +353,7 @@ class TagsManager {
             this.tagIndexMap.set(lowerName, []);
           this.tagIndexMap.get(lowerName).push(currentIndex);
 
-          if (t.knownAs && Array.isArray(t.knownAs)) {
+          if (Array.isArray(t?.knownAs)) {
             t.knownAs.forEach((alias) => {
               const cleanAlias = alias.trim().toLowerCase();
               if (!this.knownAsMap.has(cleanAlias))
@@ -388,10 +382,8 @@ class TagsManager {
         // Если в конфиге нет зависимостей, пропускаем
         if (!tag.requiredTag) return;
 
-        // Приводим всё к массиву для единообразной обработки (случаи 1, 2 и 3)
-        const rawRequirements = Array.isArray(tag.requiredTag)
-          ? tag.requiredTag
-          : [tag.requiredTag];
+        // Приводим всё к массиву для единообразной обработки
+        const rawRequirements = [tag.requiredTag].flat();
 
         tag.resolvedRequiredTags = [];
 
@@ -403,19 +395,14 @@ class TagsManager {
             // Случай 1: Просто строка — ищем в текущей категории
             targetCat = catData;
             targetTagName = req;
-          } else if (
-            typeof req === "object" &&
-            req !== null &&
-            req.category &&
-            req.name
-          ) {
+          } else if (req?.category && req?.name) {
             // Случай 2: Объект — ищем в указанной категории
             targetCat = this.categories.get(req.category);
             targetTagName = req.name;
           }
 
           // Если категория существует и в ней есть такой тег — сохраняем "ссылку"
-          if (targetCat && targetCat.tags.has(targetTagName)) {
+          if (targetCat?.tags.has(targetTagName)) {
             tag.resolvedRequiredTags.push({
               category: targetCat,
               tagName: targetTagName,
@@ -435,11 +422,7 @@ class TagsManager {
     webLinksNav.innerHTML = "";
 
     // Проверяем наличие webLinks в конфигурации
-    if (
-      this.tagsData.webLinks &&
-      Array.isArray(this.tagsData.webLinks) &&
-      this.tagsData.webLinks.length > 0
-    ) {
+    if (Array.isArray(this.tagsData?.webLinks) && this.tagsData.webLinks.length > 0) {
       // 1. Получаем параметр linkbutton из URL и преобразуем его в массив имен
       const urlParams = new URLSearchParams(window.location.search);
       const linkButtonParam = urlParams.get("linkbutton");
@@ -858,12 +841,9 @@ class TagsManager {
     this.themeState === "auto"
       ? html.removeAttribute("data-theme")
       : html.setAttribute("data-theme", this.themeState);
-    if (this.dom.themeIcon)
-      this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
-    if (this.dom.themeText)
-      this.dom.themeText.textContent = this.themeTexts[this.themeState];
-    if (this.dom.themeToggleBtn)
-      this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
+    this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
+    this.dom.themeText.textContent = this.themeTexts[this.themeState];
+    this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
   }
 
   // Показывает или прячет кнопку переключения режима и устанавливает иконку
@@ -889,7 +869,7 @@ class TagsManager {
 
   // Переключает режим текста/изображений у всех кнопок
   toggleTagDisplayMode() {
-    const headerHeight = this.dom.header && this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
+    const headerHeight = this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
 
     const findFirstVisibleButton = () => {
       const buttons = this.dom.container.querySelectorAll(".tag-button");
@@ -1129,7 +1109,7 @@ class TagsManager {
       for (const map of maps) {
         if (map.has(term)) {
           const idx = findRingIndex(map.get(term));
-          if (idx !== -1 && idx !== undefined) return idx;
+          if (idx > -1) return idx;
         }
       }
       return -1;
