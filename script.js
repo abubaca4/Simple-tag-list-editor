@@ -634,9 +634,12 @@ class TagsManager {
       this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
 
       this.dom.searchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault(); // Предотвращаем стандартное поведение
-          this.navigateSearch(1); // Переходим к следующему результату
+        if (e.key === "Enter" || e.key === "ArrowDown") {
+          e.preventDefault(); // Чтобы курсор не прыгал в конец/начало строки
+          this.navigateSearch(1);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          this.navigateSearch(-1);
         }
       });
     }
