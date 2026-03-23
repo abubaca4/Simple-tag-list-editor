@@ -239,12 +239,6 @@ body {
     white-space: nowrap;
 }
 
-.category-nav-item.nav-item-error {
-    border-color: var(--limit-exceeded);
-    color: var(--limit-exceeded);
-    background-color: rgba(244, 67, 54, 0.1);
-}
-
 @keyframes error-pulse {
     0% {
         box-shadow: 0 0 0 0 color-mix(in srgb, var(--limit-exceeded), transparent 40%);
@@ -260,7 +254,29 @@ body {
 }
 
 .category-nav-item.nav-item-error {
+    border-color: var(--limit-exceeded);
+    color: var(--limit-exceeded);
+    background-color: rgba(244, 67, 54, 0.1);
     animation: error-pulse 2s infinite;
+}
+
+@keyframes search-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--selected-border), transparent 40%);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--selected-border), transparent 100%);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--selected-border), transparent 100%);
+    }
+}
+
+.search-match-active {
+    animation: search-pulse 2s infinite !important;
+    border-color: var(--selected-border) !important;
 }
 
 .util-tag-base:hover,

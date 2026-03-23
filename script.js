@@ -29,6 +29,11 @@ class TagsManager {
     // Флаг для проверки наличия лимита
     this.hasCharacterLimit = false;
 
+    // Переменные для поиска
+    this.isSearchActive = false;
+    this.searchResults = [];
+    this.currentSearchIndex = 0;
+
     // Запускает главную последовательность инициализации
     this.initialize();
   }
@@ -246,6 +251,7 @@ class TagsManager {
       errTitle: id("errorTitle"),
       app: id("appContainer"),
       input: id("tagsInput"),
+      mainInputWrap: id("mainInputWrapper"),
       copyBtn: id("copyBtn"),
       clearBtn: id("clearBtn"),
       copyAltBtn: id("copyAltBtn"),
@@ -275,6 +281,13 @@ class TagsManager {
       displayModeBtn: id("displayModeButton"),
       displayIcon: id("displayModeButton").querySelector(".toggle-icon"),
       displayText: id("displayModeButton").querySelector(".toggle-text"),
+      searchToggleBtn: id("searchToggleButton"),
+      searchIcon: id("searchToggleButton")?.querySelector(".toggle-icon"),
+      searchText: id("searchToggleButton")?.querySelector(".toggle-text"),
+      searchInputWrap: id("searchInputWrapper"),
+      searchInput: id("tagSearchInput"),
+      searchPrevBtn: id("searchPrevBtn"),
+      searchNextBtn: id("searchNextBtn"),
     };
   }
 
@@ -611,6 +624,14 @@ class TagsManager {
     if (savedTheme) {
       this.themeState = savedTheme;
       this.applyTheme();
+    }
+
+    // СОБЫТИЯ ПОИСКА
+    if (this.dom.searchToggleBtn) {
+      this.dom.searchToggleBtn.addEventListener("click", () => this.toggleSearchMode());
+      this.dom.searchInput.addEventListener("input", () => this.performSearch());
+      this.dom.searchPrevBtn.addEventListener("click", () => this.navigateSearch(-1));
+      this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
     }
 
     // Оптимизированные обработчики скролла и изменения размера окна
@@ -1468,6 +1489,113 @@ class TagsManager {
     );
     this.dom.error.classList.remove("util-hidden");
     this.dom.app.classList.add("util-hidden");
+  }
+
+  // Включает/выключает режим поиска
+  toggleSearchMode() {
+    this.isSearchActive = !this.isSearchActive;
+
+    // Переключаем визуальное состояние кнопки (зеленая рамка/фон)
+    this.dom.searchToggleBtn.classList.toggle("active", this.isSearchActive);
+
+    // Переключаем видимость полей
+    this.dom.mainInputWrap.classList.toggle("util-hidden", this.isSearchActive);
+    this.dom.searchInputWrap.classList.toggle("util-hidden", !this.isSearchActive);
+
+    if (!this.isSearchActive) {
+      // При выходе из поиска сбрасываем всё
+      this.clearSearch();
+    } else {
+      // При входе фокусируемся на поле и запускаем поиск (вдруг там остался текст)
+      this.dom.searchInput.focus();
+      this.performSearch();
+    }
+  }
+
+  // Очищает поиск и снимает выделения
+  clearSearch() {
+    this.dom.searchInput.value = "";
+    this.searchResults = [];
+    this.currentSearchIndex = 0;
+    this.updateSearchHighlight();
+  }
+
+  // Ищет теги по полю description
+  performSearch() {
+    const query = this.dom.searchInput.value.trim().toLowerCase();
+    this.searchResults = [];
+    this.currentSearchIndex = 0;
+
+    if (!query) {
+      this.updateSearchHighlight();
+      return;
+    }
+
+    // Проходим по всем категориям и тегам
+    this.categories.forEach((cat) => {
+      cat.tags.forEach((tag) => {
+        // Проверяем наличие описания и вхождение искомой строки
+        if (tag.description && tag.description.toLowerCase().includes(query)) {
+          // Если у тега есть сгенерированная DOM-кнопка (берем первую)
+          if (tag.domButtons && tag.domButtons.length > 0) {
+            this.searchResults.push(tag.domButtons[0]);
+          }
+        }
+      });
+    });
+
+    this.updateSearchHighlight();
+  }
+
+  // Переключение между результатами
+  navigateSearch(direction) {
+    if (this.searchResults.length === 0) return;
+
+    this.currentSearchIndex += direction;
+
+    // Ограничиваем индекс
+    if (this.currentSearchIndex < 0) {
+      this.currentSearchIndex = 0;
+    }
+    if (this.currentSearchIndex >= this.searchResults.length) {
+      this.currentSearchIndex = this.searchResults.length - 1;
+    }
+
+    this.updateSearchHighlight();
+  }
+
+  // Обновляет визуальное выделение и прокручивает к результату
+  updateSearchHighlight() {
+    // 1. Снимаем выделение со всех тегов
+    document.querySelectorAll(".search-match-active").forEach(btn => {
+      btn.classList.remove("search-match-active");
+    });
+
+    const total = this.searchResults.length;
+
+    // 2. Если ничего не найдено, прячем кнопки-стрелки
+    if (total === 0) {
+      this.dom.searchPrevBtn.classList.add("util-hidden");
+      this.dom.searchNextBtn.classList.add("util-hidden");
+      return;
+    }
+
+    // 3. Выделяем текущий элемент
+    const activeBtn = this.searchResults[this.currentSearchIndex];
+    if (activeBtn) {
+      activeBtn.classList.add("search-match-active");
+
+      // 4. Плавно прокручиваем к нему с учетом закрепленного хедера
+      const headerHeight = this.dom.header && this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
+      const offset = headerHeight + 30; // 30px отступ сверху
+      const top = activeBtn.getBoundingClientRect().top + window.scrollY - offset;
+
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+
+    // 5. Управляем видимостью стрелок "вверх" и "вниз"
+    this.dom.searchPrevBtn.classList.toggle("util-hidden", this.currentSearchIndex === 0);
+    this.dom.searchNextBtn.classList.toggle("util-hidden", this.currentSearchIndex === total - 1);
   }
 }
 

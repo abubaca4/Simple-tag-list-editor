@@ -69,7 +69,11 @@
                         ⏬ Быстрый переход:
                     </div>
                     <div class="header-controls-right">
-                        <!-- переключатель режима отображения тегов (текст/изображение) -->
+                        <button id="searchToggleButton" class="toggle-button pin-header-button" type="button"
+                            title="Поиск по описанию">
+                            <span class="toggle-icon">🔍</span>
+                            <span class="toggle-text">Поиск</span>
+                        </button>
                         <button id="displayModeButton" class="toggle-button pin-header-button util-hidden" type="button"
                             title="Переключить режим отображения тегов">
                             <span class="toggle-icon">🖼️</span>
@@ -80,7 +84,8 @@
                             <span class="toggle-icon">🌓</span>
                             <span class="toggle-text">Авто</span>
                         </button>
-                        <button id="pinHeaderButton" class="pin-header-button toggle-button" type="button" title="Закрепить/открепить панель">
+                        <button id="pinHeaderButton" class="pin-header-button toggle-button" type="button"
+                            title="Закрепить/открепить панель">
                             <span class="toggle-icon">📌</span>
                             <span class="toggle-text">Закрепить</span>
                         </button>
@@ -90,7 +95,7 @@
             </div>
 
             <div class="input-section">
-                <div class="input-wrapper">
+                <div id="mainInputWrapper" class="input-wrapper">
                     <input type="text" id="tagsInput" class="tags-input util-input-base"
                         placeholder="Выберите теги..." />
                     <div class="input-actions">
@@ -99,6 +104,21 @@
                         </button>
                         <button id="clearBtn" class="input-action-button" type="button" title="Очистить поле">
                             ❌
+                        </button>
+                    </div>
+                </div>
+
+                <div id="searchInputWrapper" class="input-wrapper util-hidden">
+                    <input type="text" id="tagSearchInput" class="tags-input util-input-base"
+                        placeholder="Поиск по описанию тегов..." />
+                    <div class="input-actions">
+                        <button id="searchPrevBtn" class="input-action-button util-hidden" type="button"
+                            title="Предыдущий результат">
+                            🔼
+                        </button>
+                        <button id="searchNextBtn" class="input-action-button util-hidden" type="button"
+                            title="Следующий результат">
+                            🔽
                         </button>
                     </div>
                 </div>
@@ -117,7 +137,7 @@
                 <div id="webLinksNav" class="web-links-nav util-hidden"></div>
             </div>
             <div id="globalCategoryWarning" class="category-warning util-hidden">
-                 Требования не выполнены! Красным цветом выделены кнопки выше.
+                Требования не выполнены! Красным цветом выделены кнопки выше.
             </div>
         </div>
 
