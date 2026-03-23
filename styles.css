@@ -315,6 +315,10 @@ body {
     cursor: help;
 }
 
+[data-tooltip]:hover {
+    z-index: var(--z-tooltip);
+}
+
 [data-tooltip]:hover::before {
     content: attr(data-tooltip);
     position: absolute;
