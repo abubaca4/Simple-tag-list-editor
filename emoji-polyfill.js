@@ -1,7 +1,7 @@
 (function () {
     const FONT_URLS = [
-        'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/unhinted/ttf/NotoSansSymbols/NotoSansSymbols-Regular.ttf',
-        'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/unhinted/ttf/NotoSansSymbols2/NotoSansSymbols2-Regular.ttf',
+        'https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansSymbols/unhinted/otf/NotoSansSymbols-Regular.otf',
+        'https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansSymbols2/unhinted/otf/NotoSansSymbols2-Regular.otf',
         'https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji/font/OpenMoji-color-glyf_colr_0/OpenMoji-color-glyf_colr_0.ttf'
     ];
 
