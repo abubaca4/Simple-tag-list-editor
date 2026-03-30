@@ -77,7 +77,7 @@
     async function getSvgFromFont(char) {
         if (!opentype) {
             try {
-                const module = await import('https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js');
+                const module = await import('https://cdn.jsdelivr.net/npm/opentype.js@latest/dist/opentype.module.js');
                 opentype = module.default || module;
             } catch (err) {
                 console.error('[EmojiPolyfill] Ошибка загрузки opentype.js:', err);
