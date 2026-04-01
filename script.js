@@ -537,6 +537,7 @@ class TagsManager {
     // Обработка клика по кнопке очистки
     this.dom.clearBtn.addEventListener("click", () => {
       this.dom.input.value = "";
+      this.dom.input.focus();
       unrecWarn.classList.add("util-hidden");
       this.parseInput("", true);
       this.updateUI(false);
