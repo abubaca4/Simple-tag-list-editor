@@ -1093,51 +1093,45 @@ class TagsManager {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    let lastIdx = -1;
     const recognizedIndices = new Set();
 
-    // Поиск следующего тега по "кольцевому" алгоритму
-    const findRingIndex = (indices) => {
-      if (!indices) return -1;
-      const sorted = [...indices].sort((a, b) => a - b);
-      const after = sorted.find((i) => i > lastIdx);
-      return after !== undefined ? after : sorted.find((i) => i <= lastIdx);
-    };
-
-    // Поиск тега по прямому имени, алиасу или альтернативному имени
+    // Поиск тегов по прямому имени, алиасу или альтернативному имени
     const findTagInMaps = (term) => {
       const maps = [this.tagIndexMap, this.knownAsMap, this.altTagSearchMap];
       for (const map of maps) {
         if (map.has(term)) {
-          const idx = findRingIndex(map.get(term));
-          if (idx > -1) return idx;
+          return map.get(term);
         }
       }
-      return -1;
+      return null; // Возвращаем null, если ничего не найдено
     };
 
     rawTags.forEach((tNameOriginal, tagIndex) => {
       const tName = tNameOriginal.toLowerCase();
-      const foundIndex = findTagInMaps(tName);
+      const foundIndicesArray = findTagInMaps(tName);
 
-      if (foundIndex !== -1) {
-        const info = this.allTagsInOrder[foundIndex];
-        const cat = info.catData;
-        const main = info.mainName;
+      if (foundIndicesArray !== null) {
+        // Проходим по всем найденным индексам, активируя сразу все привязанные теги
+        foundIndicesArray.forEach((foundIndex) => {
+          const info = this.allTagsInOrder[foundIndex];
+          const cat = info.catData;
+          const main = info.mainName;
 
-        if (cat.type === "single") {
-          cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
-          cat.selectedTags.clear();
-          cat.selectedTags.add(main);
-        } else {
-          if (!cat.selectedTags.has(main)) cat.selectedTags.add(main);
-          if (cat.type === "ordered" && !cat.orderedTags.includes(main))
-            cat.orderedTags.push(main);
-        }
+          if (cat.type === "single") {
+            cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
+            cat.selectedTags.clear();
+            cat.selectedTags.add(main);
+          } else {
+            if (!cat.selectedTags.has(main)) cat.selectedTags.add(main);
+            if (cat.type === "ordered" && !cat.orderedTags.includes(main))
+              cat.orderedTags.push(main);
+          }
 
-        cat.selectedVariants.set(main, info.name);
-        this.selectedTags.set(main, info.category);
-        lastIdx = foundIndex;
+          cat.selectedVariants.set(main, info.name);
+          this.selectedTags.set(main, info.category);
+        });
+
+        // Отмечаем токен как распознанный (один раз для всех сработавших тегов)
         recognizedIndices.add(tagIndex);
       }
     });
