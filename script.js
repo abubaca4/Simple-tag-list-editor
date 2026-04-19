@@ -507,10 +507,26 @@ class TagsManager {
 
     // Обработка ввода текста. Парсит входную строку и обновляет интерфейс
     input.addEventListener("input", () => {
-      unrecWarn.classList.add("util-hidden");
-      this.parseInput(input.value, true);
-      this.updateUI(false);
-      this.saveStateToStorage();
+      const newValue = input.value;
+      const oldValue = this.loadStateFromStorage() || "";
+
+      // Проверяем условие: старая строка является частью новой, 
+      // а разница состоит только из пробелов и/или запятых.
+      let shouldSkipParsing = false;
+      if (newValue.startsWith(oldValue)) {
+        const diff = newValue.substring(oldValue.length);
+        // Регулярное выражение проверяет, что в "хвосте" только запятые и пробельные символы
+        if (/^[,\s]+$/.test(diff)) {
+          shouldSkipParsing = true;
+        }
+      }
+
+      if (!shouldSkipParsing) {
+        unrecWarn.classList.add("util-hidden");
+        this.parseInput(newValue, true);
+        this.updateUI(false);
+        this.saveStateToStorage();
+      }
     });
 
     // Обработка клика по кнопке копирования
