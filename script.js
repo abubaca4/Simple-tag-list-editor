@@ -1104,7 +1104,12 @@ class TagsManager {
     });
     this.unrecognizedTags = [];
 
-    const rawTags = str
+    // Предобработка входной строки:
+    // 1) убираем крайние пробелы до и после текста
+    // 2) добавляем пробел в конец, чтобы trailing comma не стала частью последнего тега
+    const processedStr = str.trim() + " ";
+
+    const rawTags = processedStr
       .split(this.tagsData.separator)
       .map((t) => t.trim())
       .filter(Boolean);
