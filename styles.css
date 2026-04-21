@@ -81,6 +81,9 @@
     --main-tag-bg: white;
     --main-tag-border: #71c3e9;
     --main-tag-text: #0ca1e7;
+    --required-tag-bg: white;
+    --required-tag-border: #e6a88e;
+    --required-tag-text: #ce9178;
     --warning-color: #dc3545;
     --help-bg: #6c757d;
     --tooltip-bg: #333;
@@ -110,6 +113,8 @@
     --shadow-color-dark: rgba(0, 0, 0, 0.3);
     --main-tag-bg-dark: #2d2d2d;
     --main-tag-text-dark: #a8d8f0;
+    --required-tag-bg-dark: #2d2d2d;
+    --required-tag-text-dark: #ce9178;
     --tooltip-bg-dark: #e0e0e0;
     --tooltip-text-dark: #333;
     --scroll-hint-bg-dark: rgba(113, 195, 233, 0.8);
@@ -135,6 +140,8 @@
         --shadow-color: var(--shadow-color-dark);
         --main-tag-bg: var(--main-tag-bg-dark);
         --main-tag-text: var(--main-tag-text-dark);
+        --required-tag-bg: var(--required-tag-bg-dark);
+        --required-tag-text: var(--required-tag-text-dark);
         --tooltip-bg: var(--tooltip-bg-dark);
         --tooltip-text: var(--tooltip-text-dark);
         --scroll-hint-bg: var(--scroll-hint-bg-dark);
@@ -163,6 +170,8 @@
     --shadow-color: var(--shadow-color-dark);
     --main-tag-bg: var(--main-tag-bg-dark);
     --main-tag-text: var(--main-tag-text-dark);
+    --required-tag-bg: var(--required-tag-bg-dark);
+    --required-tag-text: var(--required-tag-text-dark);
     --tooltip-bg: var(--tooltip-bg-dark);
     --tooltip-text: var(--tooltip-text-dark);
     --scroll-hint-bg: var(--scroll-hint-bg-dark);
@@ -657,6 +666,19 @@ body {
 }
 
 .tag-button.main-tag.selected {
+    background-color: var(--selected-bg);
+    border-color: var(--selected-border);
+    color: var(--text-color);
+}
+
+.tag-button.required-tag {
+    background-color: var(--required-tag-bg);
+    border-color: var(--required-tag-border);
+    color: var(--required-tag-text);
+    font-weight: var(--font-weight-normal);
+}
+
+.tag-button.required-tag.selected {
     background-color: var(--selected-bg);
     border-color: var(--selected-border);
     color: var(--text-color);

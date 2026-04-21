@@ -333,6 +333,7 @@ class TagsManager {
             image: imageUrl,
             isVariant: name !== main,
             isMainTag: t.main || false,
+            isRequiredTag: t.required || false,
             knownAs: t.knownAs || [],
             requiredTag: t.requiredTag || null,
           });
@@ -799,9 +800,9 @@ class TagsManager {
 
   // Создает кнопку тега с заданными параметрами
   createBtn(tag) {
-    // элемент само по себе остаётся <button>, но внутри у нас два
+    // элемент сам по себе остаётся <button>, но внутри у нас два
     // блока: span.tag-text и (если задано) img.tag-image.
-    let cssClass = `tag-button util-tag-base${tag.isMainTag ? " main-tag" : ""}`;
+    let cssClass = `tag-button util-tag-base${tag.isRequiredTag ? " required-tag" : (tag.isMainTag ? " main-tag" : "")}`;
     if (tag.image) cssClass += " has-image";
 
     const btn = this.el("button", cssClass, "", {
@@ -1018,9 +1019,11 @@ class TagsManager {
         setSel(tagName);
       }
       cat.orderedTags.sort((a, b) => {
-        const isAm = cat.tags.get(a).isMainTag,
-          isBm = cat.tags.get(b).isMainTag;
-        return isAm === isBm ? 0 : isAm ? -1 : 1;
+        const tagA = cat.tags.get(a);
+        const tagB = cat.tags.get(b);
+        const weightA = tagA.isRequiredTag ? 2 : (tagA.isMainTag ? 1 : 0);
+        const weightB = tagB.isRequiredTag ? 2 : (tagB.isMainTag ? 1 : 0);
+        return weightB - weightA;
       });
     } else {
       const curVar = cat.selectedVariants.get(main);
@@ -1082,9 +1085,11 @@ class TagsManager {
       if (category.type === "ordered") {
         category.orderedTags.push(targetMain);
         category.orderedTags.sort((a, b) => {
-          const isAm = category.tags.get(a).isMainTag,
-            isBm = category.tags.get(b).isMainTag;
-          return isAm === isBm ? 0 : isAm ? -1 : 1;
+          const tagA = category.tags.get(a);
+          const tagB = category.tags.get(b);
+          const weightA = tagA.isRequiredTag ? 2 : (tagA.isMainTag ? 1 : 0);
+          const weightB = tagB.isRequiredTag ? 2 : (tagB.isMainTag ? 1 : 0);
+          return weightB - weightA;
         });
       }
 
@@ -1323,6 +1328,11 @@ class TagsManager {
       txt =
         cat.overrideRequirementText ||
         "Необходимо выбрать хотя бы один главный тег";
+    } else if (cat.requirement === "atLeastOneRequired") { // ДОБАВЛЕНО
+      showWarn = ![...cat.selectedTags].some((m) => cat.tags.get(m).isRequiredTag);
+      txt =
+        cat.overrideRequirementText ||
+        "Необходимо выбрать хотя бы один обязательный тег";
     }
 
     if (warn.textContent !== txt) warn.textContent = txt;
