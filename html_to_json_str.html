@@ -21,23 +21,11 @@
             color: var(--category-title-color);
         }
 
-        .windows-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-lg);
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .window {
+        /* Контейнер для вертикального расположения на всю ширину */
+        .vertical-container {
             display: flex;
             flex-direction: column;
-            gap: var(--spacing-sm);
-        }
-
-        .window-label {
-            font-size: var(--font-size-md);
-            font-weight: var(--font-weight-semibold);
-            color: var(--category-title-color);
+            gap: var(--spacing-lg);
         }
 
         .window-textarea {
@@ -79,6 +67,7 @@
             font-weight: var(--font-weight-semibold);
             color: var(--category-title-color);
             margin-bottom: var(--spacing-md);
+            display: block;
         }
 
         .result-content {
@@ -137,11 +126,19 @@
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
         }
 
+        /* Агрессивный перенос длинных строк для CodeMirror */
+        .CodeMirror-wrap pre.CodeMirror-line,
+        .CodeMirror-wrap pre.CodeMirror-line-like {
+            word-break: break-all !important;
+            overflow-wrap: anywhere !important;
+        }
+
         /* Заголовок окна с кнопкой форматирования */
         .window-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: var(--spacing-md);
         }
 
         .format-btn {
@@ -161,10 +158,6 @@
         }
 
         @media (max-width: 768px) {
-            .windows-container {
-                grid-template-columns: 1fr;
-            }
-
             .window-textarea {
                 height: 250px;
             }
@@ -192,31 +185,28 @@
         </div>
         <h1 class="converter-title">🔄 HTML to JSON Converter</h1>
 
-        <div class="windows-container">
-            <!-- Левое окно - редактируемое -->
-            <div class="window">
+        <div class="vertical-container">
+            <div class="result-block">
                 <div class="window-header">
-                    <label class="window-label">📝 HTML Код</label>
+                    <label class="result-label" style="margin-bottom: 0;">📝 HTML Код</label>
                     <button class="format-btn" id="formatButton" title="Форматировать код">✨ Автоформат</button>
                 </div>
                 <textarea id="htmlInput" class="window-textarea" placeholder="Вставьте HTML код здесь..."></textarea>
             </div>
 
-            <!-- Правое окно - только для чтения -->
-            <div class="window">
-                <label class="window-label">📋 JSON-совместимый формат</label>
+            <div class="result-block">
+                <div class="result-label">👁 Предпросмотр результата</div>
+                <div class="result-content" id="resultPreview"></div>
+            </div>
+
+            <div class="result-block">
+                <label class="result-label">📋 JSON-совместимый формат</label>
                 <textarea id="jsonOutput" class="window-textarea" disabled
                     placeholder="Результат отобразится здесь..."></textarea>
-            </div>
-        </div>
-
-        <!-- Блок с результирующим HTML -->
-        <div class="result-block">
-            <div class="result-label">👁 Предпросмотр результата</div>
-            <div class="result-content" id="resultPreview"></div>
-            <div class="control-buttons">
-                <button class="control-button" id="clearButton">🗑 Очистить</button>
-                <button class="control-button" id="copyButton">📋 Копировать JSON</button>
+                <div class="control-buttons">
+                    <button class="control-button" id="clearButton">🗑 Очистить</button>
+                    <button class="control-button" id="copyButton">📋 Копировать JSON</button>
+                </div>
             </div>
         </div>
     </div>
@@ -320,6 +310,7 @@
             htmlInput.value = '';
             jsonOutput.value = '';
             resultPreview.innerHTML = '';
+            editor.setValue(''); // Очищаем и сам редактор CodeMirror
         }
 
         /**
@@ -344,8 +335,8 @@
         }
 
         /**
- * Переключает тему интерфейса и CodeMirror
- */
+        * Переключает тему интерфейса и CodeMirror
+        */
         function toggleTheme() {
             const html = document.documentElement;
             html.setAttribute("data-theme", html.getAttribute("data-theme") === "dark" ? "light" : "dark");
