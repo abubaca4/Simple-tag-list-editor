@@ -79,11 +79,11 @@
     --variant-group-bg: #fafafa;
     --shadow-color: rgba(0, 0, 0, 0.1);
     --main-tag-bg: white;
-    --main-tag-border: #71c3e9;
-    --main-tag-text: #0ca1e7;
+    --main-tag-border: #e6a88e;
+    --main-tag-text: #ce9178;
     --required-tag-bg: white;
-    --required-tag-border: #e6a88e;
-    --required-tag-text: #ce9178;
+    --required-tag-border: #71c3e9;
+    --required-tag-text: #0ca1e7;
     --warning-color: #dc3545;
     --help-bg: #6c757d;
     --tooltip-bg: #333;
@@ -112,9 +112,9 @@
     --variant-group-bg-dark: #3d3d3d;
     --shadow-color-dark: rgba(0, 0, 0, 0.3);
     --main-tag-bg-dark: #2d2d2d;
-    --main-tag-text-dark: #a8d8f0;
+    --main-tag-text-dark: #ce9178;
     --required-tag-bg-dark: #2d2d2d;
-    --required-tag-text-dark: #ce9178;
+    --required-tag-text-dark: #a8d8f0;
     --tooltip-bg-dark: #e0e0e0;
     --tooltip-text-dark: #333;
     --scroll-hint-bg-dark: rgba(113, 195, 233, 0.8);
