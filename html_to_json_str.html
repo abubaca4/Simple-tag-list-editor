@@ -175,17 +175,21 @@
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
 </head>
 
 <body>
     <div class="converter-section">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button id="themeToggle" class="control-button" style="flex: none; width: auto;">🌓 Сменить тему</button>
+        </div>
         <h1 class="converter-title">🔄 HTML to JSON Converter</h1>
 
         <div class="windows-container">
@@ -225,6 +229,7 @@
         const clearButton = document.getElementById('clearButton');
         const copyButton = document.getElementById('copyButton');
         const formatButton = document.getElementById('formatButton');
+        const themeToggle = document.getElementById('themeToggle');
 
         // Инициализация CodeMirror
         const editor = CodeMirror.fromTextArea(htmlInput, {
@@ -338,6 +343,21 @@
             });
         }
 
+        /**
+ * Переключает тему интерфейса и CodeMirror
+ */
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.setAttribute("data-theme", html.getAttribute("data-theme") === "dark" ? "light" : "dark");
+
+            // Переключаем тему в CodeMirror
+            // 'monokai' для темной, 'default' для светлой
+            editor.setOption('theme', html.getAttribute("data-theme") === "dark" ? 'monokai' : 'default');
+
+            // Сохраняем выбор пользователя
+            localStorage.setItem('theme', html.getAttribute("data-theme") === "dark" ? 'dark' : 'light');
+        }
+
         // Слушаем изменения в редакторе CodeMirror вместо textarea
         editor.on('change', () => {
             const htmlCode = editor.getValue();
@@ -356,6 +376,16 @@
         clearButton.addEventListener('click', clearAll);
         copyButton.addEventListener('click', copyToClipboard);
         formatButton.addEventListener('click', formatHtmlCode);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const html = document.documentElement;
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                html.setAttribute("data-theme", "dark");
+                editor.setOption('theme', 'monokai');
+            }
+        });
 
         // Инициализация
         console.log('HTML to JSON Converter initialized ✓');
