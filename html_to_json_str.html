@@ -120,6 +120,46 @@
             transform: translateY(-1px);
         }
 
+        .CodeMirror {
+            width: 100%;
+            height: 300px;
+            font-size: var(--font-size-sm);
+            font-family: 'Courier New', monospace;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--container-bg);
+            transition: all var(--transition-normal);
+        }
+
+        .CodeMirror-focused {
+            outline: none;
+            border-color: var(--border-focus-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        /* Заголовок окна с кнопкой форматирования */
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .format-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .format-btn:hover {
+            background-color: var(--alternative-bg);
+            border-color: var(--border-hover-color);
+        }
+
         @media (max-width: 768px) {
             .windows-container {
                 grid-template-columns: 1fr;
@@ -128,8 +168,20 @@
             .window-textarea {
                 height: 250px;
             }
+
+            .CodeMirror {
+                height: 250px;
+            }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
 </head>
 
 <body>
@@ -139,7 +191,10 @@
         <div class="windows-container">
             <!-- Левое окно - редактируемое -->
             <div class="window">
-                <label class="window-label">📝 HTML Код (редактируемое)</label>
+                <div class="window-header">
+                    <label class="window-label">📝 HTML Код</label>
+                    <button class="format-btn" id="formatButton" title="Форматировать код">✨ Автоформат</button>
+                </div>
                 <textarea id="htmlInput" class="window-textarea" placeholder="Вставьте HTML код здесь..."></textarea>
             </div>
 
@@ -169,6 +224,41 @@
         const resultPreview = document.getElementById('resultPreview');
         const clearButton = document.getElementById('clearButton');
         const copyButton = document.getElementById('copyButton');
+        const formatButton = document.getElementById('formatButton');
+
+        // Инициализация CodeMirror
+        const editor = CodeMirror.fromTextArea(htmlInput, {
+            mode: 'htmlmixed',
+            lineNumbers: true,
+            theme: 'default', // Можно изменить на 'monokai' для темной темы
+            lineWrapping: true,
+            tabSize: 4,
+            viewportMargin: Infinity
+        });
+
+        /**
+         * Функция автоматического форматирования HTML
+         */
+        function formatHtmlCode() {
+            const unformatted = editor.getValue();
+            if (!unformatted.trim()) return;
+
+            // Форматируем с помощью js-beautify
+            const formatted = html_beautify(unformatted, {
+                indent_size: 4,
+                wrap_line_length: 0,
+                preserve_newlines: true,
+                max_preserve_newlines: 1,
+                end_with_newline: true
+            });
+
+            if (formatted !== unformatted) {
+                // Обновляем значение без потери истории Undo
+                const cursor = editor.getCursor();
+                editor.setValue(formatted);
+                editor.setCursor(cursor);
+            }
+        }
 
         /**
          * Конвертирует HTML в JSON-совместимый формат
@@ -248,10 +338,24 @@
             });
         }
 
+        // Слушаем изменения в редакторе CodeMirror вместо textarea
+        editor.on('change', () => {
+            const htmlCode = editor.getValue();
+            const jsonFormat = convertHtmlToJsonFormat(htmlCode);
+            jsonOutput.value = jsonFormat;
+            updatePreview(htmlCode);
+        });
+
+        // Автоматическое форматирование при вставке текста (Paste)
+        editor.on('paste', () => {
+            // Небольшая задержка, чтобы текст успел вставиться
+            setTimeout(formatHtmlCode, 50);
+        });
+
         // Обработчики событий
-        htmlInput.addEventListener('input', handleInput);
         clearButton.addEventListener('click', clearAll);
         copyButton.addEventListener('click', copyToClipboard);
+        formatButton.addEventListener('click', formatHtmlCode);
 
         // Инициализация
         console.log('HTML to JSON Converter initialized ✓');
