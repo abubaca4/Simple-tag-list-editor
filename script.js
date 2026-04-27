@@ -154,9 +154,7 @@ class TagsManager {
 
         if (this.tagsData.hideInputSection) {
           this.dom.input.classList.add("util-hidden");
-          if (this.dom.copyBtn) {
-            this.dom.copyBtn.classList.add("util-hidden");
-          }
+          this.dom.copyBtn.classList.add("util-hidden");
         }
 
         this.initWebLinks();
@@ -457,8 +455,6 @@ class TagsManager {
   initWebLinks() {
     const { webLinksNav } = this.dom;
 
-    if (!webLinksNav) return;
-
     webLinksNav.innerHTML = "";
 
     if (Array.isArray(this.tagsData?.webLinks) && this.tagsData.webLinks.length > 0) {
@@ -628,9 +624,7 @@ class TagsManager {
     const savedPinned = localStorage.getItem("headerPinned");
     this.isHeaderPinned = savedPinned !== null ? JSON.parse(savedPinned) : true;
 
-    if (displayModeBtn) {
-      displayModeBtn.addEventListener("click", () => this.toggleTagDisplayMode());
-    }
+    displayModeBtn.addEventListener("click", () => this.toggleTagDisplayMode());
 
     themeToggleBtn.addEventListener("click", () => this.toggleTheme());
     const savedTheme = localStorage.getItem("theme");
@@ -639,22 +633,20 @@ class TagsManager {
       this.applyTheme();
     }
 
-    if (this.dom.searchToggleBtn) {
-      this.dom.searchToggleBtn.addEventListener("click", () => this.toggleSearchMode());
-      this.dom.searchInput.addEventListener("input", () => this.performSearch());
-      this.dom.searchPrevBtn.addEventListener("click", () => this.navigateSearch(-1));
-      this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
+    this.dom.searchToggleBtn.addEventListener("click", () => this.toggleSearchMode());
+    this.dom.searchInput.addEventListener("input", () => this.performSearch());
+    this.dom.searchPrevBtn.addEventListener("click", () => this.navigateSearch(-1));
+    this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
 
-      this.dom.searchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === "ArrowDown") {
-          e.preventDefault();
-          this.navigateSearch(1);
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          this.navigateSearch(-1);
-        }
-      });
-    }
+    this.dom.searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "ArrowDown") {
+        e.preventDefault();
+        this.navigateSearch(1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this.navigateSearch(-1);
+      }
+    });
 
     const updateLayoutDebounced = () => {
       if (!this.scrollTicking) {
@@ -858,7 +850,6 @@ class TagsManager {
 
   updateDisplayToggleVisibility() {
     const btn = this.dom.displayModeBtn;
-    if (!btn) return;
     if (this.isImageOnly || this.imageTagCount === 0) {
       btn.classList.add("util-hidden");
       return;
@@ -869,7 +860,6 @@ class TagsManager {
 
   updateDisplayToggleIcon() {
     const { displayModeBtn, displayIcon, displayText } = this.dom;
-    if (!displayModeBtn) return;
     const showingText = this.displayMode === "text";
     displayIcon.textContent = showingText ? "🔤" : "🖼️";
     displayText.textContent = showingText ? "Текст" : "Иконки";
@@ -1211,14 +1201,13 @@ class TagsManager {
   }
 
   updateCategoryDOM(cat) {
-    if (!cat.dom) return;
     this.updateButtonsInContainer(cat.dom, cat);
     this.refreshGlobalWarning();
   }
 
   updateFullState() {
     this.categories.forEach((cat) => {
-      if (cat.dom) this.updateButtonsInContainer(cat.dom, cat);
+      this.updateButtonsInContainer(cat.dom, cat);
     });
     this.refreshGlobalWarning();
     this.updateDisplayToggleVisibility();
