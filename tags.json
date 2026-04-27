@@ -12,6 +12,21 @@
   "reference": "<p><strong>Добро пожаловать в руководство по тегам!</strong></p><ul><li>Здесь вы найдете информацию о правилах выбора тегов.</li><li>HTML-теги, такие как <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code> и <code>&lt;ul&gt;</code>, поддерживаются.</li></ul><p>Пожалуйста, выбирайте теги внимательно.</p>",
   "characterLimit": 100,
   "cacheMaxAgeHours": 12,
+  "highlightedTags": [
+    {
+      "name": "main",
+      "light": {
+        "bg": "white",
+        "border": "#71c3e9",
+        "text": "#0ca1e7"
+      },
+      "dark": {
+        "bg": "#2d2d2d",
+        "border": "#71c3e9",
+        "text": "#a8d8f0"
+      }
+    }
+  ],
   "categories": [
     {
       "name": "Жанры",
@@ -25,14 +40,14 @@
           "alternative": "action",
           "subgroup": "!Основные",
           "description": "Динамичные сцены и битвы",
-          "main": true
+          "highlight": "main"
         },
         {
           "name": "романтика",
           "alternative": "romance",
           "subgroup": "!Основные",
           "description": "Истории о любви и отношениях",
-          "main": true
+          "highlight": "main"
         },
         {
           "name": "комедия",
@@ -49,7 +64,7 @@
             "фантастика"
           ],
           "description": "Миры с магией и мифическими существами",
-          "main": true
+          "highlight": "main"
         },
         {
           "name": [
@@ -85,7 +100,7 @@
           "alternative": "PS",
           "subgroup": "",
           "description": "Консоли Sony",
-          "main": true
+          "highlight": "main"
         },
         {
           "name": [
@@ -116,7 +131,7 @@
           "alternative": "top priority",
           "subgroup": "",
           "description": "Самые важные теги",
-          "main": true
+          "highlight": "main"
         },
         {
           "name": [

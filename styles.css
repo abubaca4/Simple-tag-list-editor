@@ -78,12 +78,6 @@
     --limit-exceeded: #f44336;
     --variant-group-bg: #fafafa;
     --shadow-color: rgba(0, 0, 0, 0.1);
-    --main-tag-bg: white;
-    --main-tag-border: #e6a88e;
-    --main-tag-text: #ce9178;
-    --required-tag-bg: white;
-    --required-tag-border: #71c3e9;
-    --required-tag-text: #0ca1e7;
     --warning-color: #dc3545;
     --help-bg: #6c757d;
     --tooltip-bg: #333;
@@ -93,6 +87,11 @@
     --nav-item-bg: var(--container-bg);
     --nav-item-hover: var(--alternative-bg);
     --nav-item-active: var(--selected-bg);
+
+    /* Standalone Web-Links styling */
+    --web-link-bg: white;
+    --web-link-border: #71c3e9;
+    --web-link-text: #0ca1e7;
 }
 
 /* === COLOR VARIABLES - DARK THEME === */
@@ -111,14 +110,15 @@
     --limit-exceeded-dark: #ff6b6b;
     --variant-group-bg-dark: #3d3d3d;
     --shadow-color-dark: rgba(0, 0, 0, 0.3);
-    --main-tag-bg-dark: #2d2d2d;
-    --main-tag-text-dark: #ce9178;
-    --required-tag-bg-dark: #2d2d2d;
-    --required-tag-text-dark: #a8d8f0;
     --tooltip-bg-dark: #e0e0e0;
     --tooltip-text-dark: #333;
     --scroll-hint-bg-dark: rgba(113, 195, 233, 0.8);
     --scroll-hint-text-dark: #1a1a1a;
+
+    /* Standalone Web-Links styling */
+    --web-link-bg-dark: #2d2d2d;
+    --web-link-border-dark: #71c3e9;
+    --web-link-text-dark: #a8d8f0;
 }
 
 /* === DARK THEME (system preference) === */
@@ -138,10 +138,6 @@
         --limit-exceeded: var(--limit-exceeded-dark);
         --variant-group-bg: var(--variant-group-bg-dark);
         --shadow-color: var(--shadow-color-dark);
-        --main-tag-bg: var(--main-tag-bg-dark);
-        --main-tag-text: var(--main-tag-text-dark);
-        --required-tag-bg: var(--required-tag-bg-dark);
-        --required-tag-text: var(--required-tag-text-dark);
         --tooltip-bg: var(--tooltip-bg-dark);
         --tooltip-text: var(--tooltip-text-dark);
         --scroll-hint-bg: var(--scroll-hint-bg-dark);
@@ -149,6 +145,10 @@
         --nav-item-bg: var(--container-bg-dark);
         --nav-item-hover: var(--alternative-bg-dark);
         --nav-item-active: var(--selected-bg-dark);
+
+        --web-link-bg: var(--web-link-bg-dark);
+        --web-link-border: var(--web-link-border-dark);
+        --web-link-text: var(--web-link-text-dark);
     }
 }
 
@@ -168,10 +168,6 @@
     --limit-exceeded: var(--limit-exceeded-dark);
     --variant-group-bg: var(--variant-group-bg-dark);
     --shadow-color: var(--shadow-color-dark);
-    --main-tag-bg: var(--main-tag-bg-dark);
-    --main-tag-text: var(--main-tag-text-dark);
-    --required-tag-bg: var(--required-tag-bg-dark);
-    --required-tag-text: var(--required-tag-text-dark);
     --tooltip-bg: var(--tooltip-bg-dark);
     --tooltip-text: var(--tooltip-text-dark);
     --scroll-hint-bg: var(--scroll-hint-bg-dark);
@@ -179,6 +175,10 @@
     --nav-item-bg: var(--container-bg-dark);
     --nav-item-hover: var(--alternative-bg-dark);
     --nav-item-active: var(--selected-bg-dark);
+
+    --web-link-bg: var(--web-link-bg-dark);
+    --web-link-border: var(--web-link-border-dark);
+    --web-link-text: var(--web-link-text-dark);
 }
 
 /* --- ОСНОВНЫЕ СТИЛИ --- */
@@ -422,7 +422,6 @@ body {
 
 .input-wrapper .tags-input {
     padding-right: 80px;
-    /* Отступ текста, чтобы он не залезал под кнопки */
 }
 
 .input-actions {
@@ -527,10 +526,8 @@ body {
     height: 80px;
     resize: none;
     padding-right: calc(40px + 10px);
-    /* Отступ текста, чтобы он не залезал под кнопку */
 }
 
-/* Выравнивание кнопки по верхнему краю для многострочного поля */
 .alt-actions {
     top: var(--spacing-sm);
     right: calc(var(--spacing-sm) + 10px);
@@ -658,32 +655,6 @@ body {
     color: var(--text-color);
 }
 
-.tag-button.main-tag {
-    background-color: var(--main-tag-bg);
-    border-color: var(--main-tag-border);
-    color: var(--main-tag-text);
-    font-weight: var(--font-weight-normal);
-}
-
-.tag-button.main-tag.selected {
-    background-color: var(--selected-bg);
-    border-color: var(--selected-border);
-    color: var(--text-color);
-}
-
-.tag-button.required-tag {
-    background-color: var(--required-tag-bg);
-    border-color: var(--required-tag-border);
-    color: var(--required-tag-text);
-    font-weight: var(--font-weight-normal);
-}
-
-.tag-button.required-tag.selected {
-    background-color: var(--selected-bg);
-    border-color: var(--selected-border);
-    color: var(--text-color);
-}
-
 .tag-button.ordered::after {
     content: attr(data-order);
     position: absolute;
@@ -707,20 +678,16 @@ body {
     align-items: center;
     justify-content: center;
     vertical-align: middle;
-    /* Убираем фиксированную высоту и ширину, чтобы теги выглядели одинаково */
 }
 
 .tag-button.has-image img {
     max-height: 100%;
     max-width: 100%;
     object-fit: contain;
-    /* Картинка вписывается без искажений */
     display: block;
     pointer-events: none;
-    /* Чтобы клик по картинке проходил в кнопку */
 }
 
-/* Внутренние элементы тега: текст и картинка. */
 .tag-text {
     display: inline-block;
 }
@@ -731,7 +698,6 @@ body {
     vertical-align: middle;
 }
 
-/* Корректировка кружка с порядковым номером для картинок */
 .tag-button.has-image.ordered::after {
     top: -8px;
     right: -8px;
@@ -940,10 +906,10 @@ body {
 
 .web-link-item {
     padding: var(--spacing-xs) var(--spacing-md);
-    border: 1px solid var(--required-tag-border);
+    border: 1px solid var(--web-link-border);
     border-radius: var(--radius-pill);
-    background-color: var(--main-tag-bg);
-    color: var(--required-tag-text);
+    background-color: var(--web-link-bg);
+    color: var(--web-link-text);
     text-decoration: none;
     font-size: var(--font-size-sm);
     cursor: pointer;

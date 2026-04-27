@@ -21,7 +21,6 @@ class TagsManager {
     this.themeTexts = { auto: "Авто", dark: "Тёмная", light: "Светлая" };
 
     // Управление режимом отображения тегов: "text" или "image".
-    // Исходное значение устанавливается после загрузки конфига.
     this.displayMode = "text";
     this.imageTagCount = 0; // сколько кнопок имеют картинку
     this.isImageOnly = false; // true если в конфиге imageMode=imageOnly
@@ -73,18 +72,16 @@ class TagsManager {
 
     const fetchFile = async (f, fetchMode) => {
       const options = {
-        cache: fetchMode, // 'default' (использует кеш, если свежий) или 'no-cache' (игнорирует кеш)
+        cache: fetchMode,
       };
 
       const r = await fetch(f, options);
       if (!r.ok) {
-        // Если статус 404/500, возвращаем ошибку
         throw new Error(`Файл не найден (статус: ${r.status})`);
       }
 
       const json = await r.json();
 
-      // Обновляем метаданные после успешного получения (статус 200)
       const cacheMaxAgeHours = json.cacheMaxAgeHours;
       this.getCacheMetadata(f, "set", { cacheMaxAgeHours, newContent: true });
 
@@ -96,32 +93,23 @@ class TagsManager {
     const now = Date.now();
     const lastFetchTime = cacheMeta.lastSuccessfulFetchTime || 0;
 
-    // Расчет требуемого времени обновления
-    const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24; // По умолчанию 24 часа
+    const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24;
     const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
     const isCacheExpired =
       lastFetchTime === 0 || now - lastFetchTime > maxAgeMs;
 
-    // Определяем режим запроса
-    // 'no-cache' заставит браузер обратиться к серверу (для проверки ETag/Last-Modified или получения нового файла).
-    // 'default' позволит браузеру использовать кеш, если он свежий по заголовкам Cache-Control/Expires.
     const fetchMode = isCacheExpired ? "no-cache" : "default";
 
     try {
       return await fetchFile(fileName, fetchMode);
     } catch (e) {
-      // Логика резервного варианта 'tags.json'
       if (fileName !== "tags.json") {
         try {
-          // Пытаемся загрузить резервный 'tags.json' с принудительной проверкой,
-          // чтобы убедиться, что он не устарел, если его будем использовать.
           return await fetchFile("tags.json", "no-cache");
         } catch (fallbackErr) {
-          // Если оба файла не найдены/ошибочны, пробрасываем исходную ошибку
           throw e;
         }
       }
-      // Пробрасываем ошибку, если исходный файл не 'tags.json' и не найден
       throw e;
     }
   }
@@ -140,12 +128,9 @@ class TagsManager {
 
   async initialize() {
     try {
-      // Кэширует ссылки на все DOM-элементы
       this.cacheDOM();
-      // Устанавливает обработчики для статичных элементов
       this.setupStaticEvents();
 
-      // Ожидает завершения загрузки данных
       try {
         this.tagsData = await this.dataPromise;
 
@@ -155,10 +140,10 @@ class TagsManager {
           );
         }
 
-        // Проверяем наличие лимита символов в конфигурации
+        this.generateHighlightCSS();
+
         this.hasCharacterLimit = this.tagsData?.characterLimit > 0;
 
-        // Режим отображения тегов (textFirst, imageFirst, imageOnly)
         const mode = (this.tagsData.imageMode || "textFirst").toString();
         if (mode === "textFirst") {
           this.displayMode = "text";
@@ -167,7 +152,6 @@ class TagsManager {
         }
         this.isImageOnly = mode === "imageOnly";
 
-        // Скрываем input-section, если указано в конфигурации
         if (this.tagsData.hideInputSection) {
           this.dom.input.classList.add("util-hidden");
           if (this.dom.copyBtn) {
@@ -181,34 +165,25 @@ class TagsManager {
         return;
       }
 
-      // Настройка приложения после загрузки данных
       this.showUI();
-      // Инициализирует внутренние структуры данных (Map'ы и индексы)
       this.initCategories();
       this.resolveRequiredTags();
-      // Рендерит HTML-структуру тегов и навигации
       this.render();
-      // сразу после рендера посмотрим, нужна ли кнопка переключения
       this.updateDisplayToggleVisibility();
 
-      // 1. Пробуем загрузить сохраненное состояние
       const savedState = this.loadStateFromStorage();
-
-      // 2. Если есть сохранение, используем его. Если нет, берем то, что в HTML (value="" у input)
       const initialValue = savedState?.trim() ? savedState : this.dom.input.value;
 
       if (initialValue) {
         this.parseInput(initialValue, true);
       }
 
-      // Скрываем блок с лимитом, если он не задан
       if (!this.hasCharacterLimit) {
         this.dom.limitBox.parentElement.classList.add("util-hidden");
       } else {
         this.updateLimitDisplay(this.dom.input.value.length);
       }
 
-      // Обновляет состояние всех кнопок и элементов
       this.updateFullState();
       this.updateAlt();
     } catch (e) {
@@ -221,7 +196,63 @@ class TagsManager {
     }
   }
 
-  // Обрабатывает и отображает ошибки при загрузке конфигурационного файла
+  // Генерация динамических CSS стилей для хайлайтов тегов
+  generateHighlightCSS() {
+    if (!Array.isArray(this.tagsData.highlightedTags)) return;
+
+    let lightVars = '', darkVars = '', classes = '';
+
+    this.tagsData.highlightedTags.forEach((h, index) => {
+      const cls = `highlight-${index}`;
+
+      if (h.light) {
+        if (h.light.bg) lightVars += `--${cls}-bg: ${h.light.bg}; `;
+        if (h.light.border) lightVars += `--${cls}-border: ${h.light.border}; `;
+        if (h.light.text) lightVars += `--${cls}-text: ${h.light.text}; `;
+      }
+
+      if (h.dark) {
+        if (h.dark.bg) darkVars += `--${cls}-bg: ${h.dark.bg}; `;
+        if (h.dark.border) darkVars += `--${cls}-border: ${h.dark.border}; `;
+        if (h.dark.text) darkVars += `--${cls}-text: ${h.dark.text}; `;
+      } else if (h.light) {
+        // Fallback если темная тема для выделения не задана
+        if (h.light.bg) darkVars += `--${cls}-bg: ${h.light.bg}; `;
+        if (h.light.border) darkVars += `--${cls}-border: ${h.light.border}; `;
+        if (h.light.text) darkVars += `--${cls}-text: ${h.light.text}; `;
+      }
+
+      classes += `
+        .tag-button.${cls} {
+          background-color: var(--${cls}-bg, transparent);
+          border-color: var(--${cls}-border, transparent);
+          color: var(--${cls}-text, inherit);
+          font-weight: normal;
+        }
+        .tag-button.${cls}.selected {
+          background-color: var(--selected-bg);
+          border-color: var(--selected-border);
+          color: var(--text-color);
+        }
+        .${cls}-text {
+          color: var(--${cls}-text, inherit);
+          font-weight: bold;
+        }
+      `;
+    });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      :root { ${lightVars} }
+      [data-theme="dark"] { ${darkVars} }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) { ${darkVars} }
+      }
+      ${classes}
+    `;
+    document.head.appendChild(style);
+  }
+
   handleLoadError(e) {
     const fileName =
       new URLSearchParams(window.location.search).get("conf") || "tags.json";
@@ -235,7 +266,6 @@ class TagsManager {
     this.error(errorText, errorTitle);
   }
 
-  // Кэширует ссылки на все DOM-элементы по ID
   cacheDOM() {
     const id = (x) => document.getElementById(x);
     this.dom = {
@@ -285,7 +315,6 @@ class TagsManager {
     };
   }
 
-  // Вспомогательная функция для создания DOM-элементов
   el(tag, cls = "", text = "", attrs = {}) {
     const d = document.createElement(tag);
     if (cls) d.className = cls;
@@ -294,7 +323,6 @@ class TagsManager {
     return d;
   }
 
-  // Инициализирует внутренние структуры данных из tagsData
   initCategories() {
     this.categories.clear();
     this.allTagsInOrder = [];
@@ -305,7 +333,7 @@ class TagsManager {
     this.tagsData.categories.forEach((cat) => {
       const catData = {
         ...cat,
-        requirement: cat.requirement || "none",
+        requirement: cat.requirement || [],
         overrideRequirementText: cat.overrideRequirementText || "",
         tags: new Map(),
         selectedTags: new Set(),
@@ -320,8 +348,25 @@ class TagsManager {
         const main = names[0];
         if (names.length > 1) catData.variantGroups.set(main, names);
 
-        // Если задано поле image, сохраняем путь.
         const imageUrl = t.image || null;
+
+        // Анализ и определение приоритетов хайлайтов тега
+        const tagHighlights = [t.highlight].flat().filter(Boolean);
+        let highestPriorityIndex = -1;
+        let highestPriorityWeight = 0;
+
+        if (Array.isArray(this.tagsData.highlightedTags)) {
+          for (const hName of tagHighlights) {
+            const index = this.tagsData.highlightedTags.findIndex(h => h.name === hName);
+            if (index !== -1) {
+              const weight = this.tagsData.highlightedTags.length - index;
+              if (weight > highestPriorityWeight) {
+                highestPriorityWeight = weight;
+                highestPriorityIndex = index;
+              }
+            }
+          }
+        }
 
         names.forEach((name) => {
           catData.tags.set(name, {
@@ -332,13 +377,13 @@ class TagsManager {
             description: t.description || "",
             image: imageUrl,
             isVariant: name !== main,
-            isMainTag: t.main || false,
-            isRequiredTag: t.required || false,
             knownAs: t.knownAs || [],
             requiredTag: t.requiredTag || null,
+            highlights: tagHighlights,
+            displayHighlightIndex: highestPriorityIndex,
+            sortWeight: highestPriorityWeight
           });
 
-          // Индексация тегов для быстрого поиска
           const tagInfo = {
             name,
             mainName: main,
@@ -380,10 +425,8 @@ class TagsManager {
   resolveRequiredTags() {
     this.categories.forEach((catData) => {
       catData.tags.forEach((tag) => {
-        // Если в конфиге нет зависимостей, пропускаем
         if (!tag.requiredTag) return;
 
-        // Приводим всё к массиву для единообразной обработки
         const rawRequirements = [tag.requiredTag].flat();
 
         tag.resolvedRequiredTags = [];
@@ -393,16 +436,13 @@ class TagsManager {
           let targetTagName = "";
 
           if (typeof req === "string") {
-            // Случай 1: Просто строка — ищем в текущей категории
             targetCat = catData;
             targetTagName = req;
           } else if (req?.category && req?.name) {
-            // Случай 2: Объект — ищем в указанной категории
             targetCat = this.categories.get(req.category);
             targetTagName = req.name;
           }
 
-          // Если категория существует и в ней есть такой тег — сохраняем "ссылку"
           if (targetCat?.tags.has(targetTagName)) {
             tag.resolvedRequiredTags.push({
               category: targetCat,
@@ -419,12 +459,9 @@ class TagsManager {
 
     if (!webLinksNav) return;
 
-    // Очищаем существующие ссылки
     webLinksNav.innerHTML = "";
 
-    // Проверяем наличие webLinks в конфигурации
     if (Array.isArray(this.tagsData?.webLinks) && this.tagsData.webLinks.length > 0) {
-      // 1. Получаем параметр linkbutton из URL и преобразуем его в массив имен
       const urlParams = new URLSearchParams(window.location.search);
       const linkButtonParam = urlParams.get("linkbutton");
       const allowedButtons = linkButtonParam
@@ -433,11 +470,7 @@ class TagsManager {
 
       let addedLinksCount = 0;
 
-      // 2. Фильтруем и создаем ссылки
       this.tagsData.webLinks.forEach((link) => {
-        // Логика отображения:
-        // - Если fName нет, отображаем всегда.
-        // - Если fName есть, проверяем его наличие в параметрах запроса.
         const shouldDisplay =
           !link.fName || allowedButtons.includes(link.fName);
 
@@ -463,19 +496,16 @@ class TagsManager {
         }
       });
 
-      // Показываем блок только если в итоге была добавлена хотя бы одна ссылка
       if (addedLinksCount > 0) {
         webLinksNav.classList.remove("util-hidden");
       } else {
         webLinksNav.classList.add("util-hidden");
       }
     } else {
-      // Скрываем блок, если ссылок нет вообще
       webLinksNav.classList.add("util-hidden");
     }
   }
 
-  // Генерирует альтернативные имена для тегов с косой чертой (например, "A/B C" -> "A C", "B C")
   generateAltNames(name) {
     const parts = name.split(/\s+/).map((p) => p.split("/").filter(Boolean));
     const combine = (arr, index = 0, current = []) => {
@@ -489,7 +519,6 @@ class TagsManager {
     return combine(parts).filter(Boolean);
   }
 
-  // Устанавливает обработчики событий для основных элементов интерфейса
   setupStaticEvents() {
     const {
       input,
@@ -506,17 +535,13 @@ class TagsManager {
       refContent,
     } = this.dom;
 
-    // Обработка ввода текста. Парсит входную строку и обновляет интерфейс
     input.addEventListener("input", () => {
       const newValue = input.value;
       const oldValue = this.loadStateFromStorage() || "";
 
-      // Проверяем условие: старая строка является частью новой, 
-      // а разница состоит только из пробелов и/или запятых.
       let shouldSkipParsing = false;
       if (newValue.startsWith(oldValue)) {
         const diff = newValue.substring(oldValue.length);
-        // Регулярное выражение проверяет, что в "хвосте" только запятые и пробельные символы
         if (/^[,\s]+$/.test(diff)) {
           shouldSkipParsing = true;
         }
@@ -530,19 +555,15 @@ class TagsManager {
       }
     });
 
-    // Обработка клика по кнопке копирования
     this.dom.copyBtn.addEventListener("click", async () => {
       try {
         if (!(this.dom.input.value.replace(/\s+/g, "") == "")) {
           await navigator.clipboard.writeText(this.dom.input.value);
 
-          // Проверяем, виден ли блок с альтернативными тегами
           if (!this.dom.altSection.classList.contains("util-hidden")) {
-            // Вычисляем отступ с учетом закрепленного хедера
             const offset = this.isHeaderPinned ? this.dom.header.offsetHeight + 30 : 20;
             const top = this.dom.altSection.getBoundingClientRect().top + window.scrollY - offset;
 
-            // Плавно прокручиваем к блоку
             window.scrollTo({ top, behavior: "smooth" });
           }
         }
@@ -551,7 +572,6 @@ class TagsManager {
       }
     });
 
-    // Обработка клика по кнопке очистки
     this.dom.clearBtn.addEventListener("click", () => {
       this.dom.input.value = "";
       this.dom.input.focus();
@@ -561,7 +581,6 @@ class TagsManager {
       this.saveStateToStorage();
     });
 
-    // Обработка клика по кнопке копирования альтернативных тегов
     this.dom.copyAltBtn.addEventListener("click", async () => {
       try {
         if (!(this.dom.altOut.value.replace(/\s+/g, "") == "")) {
@@ -572,20 +591,17 @@ class TagsManager {
       }
     });
 
-    // Обработка чекбоксов лимита и дубликатов
     limitBox.addEventListener("change", () => {
       this.updateUI(true);
     });
     dupBox.addEventListener("change", () => this.updateAlt());
 
-    // Переключение раздела справки
     refToggleBtn.addEventListener("click", () => {
       const isHidden = refContent.classList.toggle("util-hidden");
       refToggleBtn.textContent = isHidden ? "Важная информация" : "Скрыть";
       if (this.isHeaderPinned) this.updateHeaderOffset();
     });
 
-    // Делегирование клика по кнопкам тегов
     container.addEventListener("click", (e) => {
       const btn = e.target.closest(".tag-button");
       if (!btn) return;
@@ -595,7 +611,6 @@ class TagsManager {
 
       let tagName;
       if (e.target.tagName === "IMG" && btn.dataset.mainname) {
-        // при клике на картинку используем основное имя (первый вариант)
         tagName = btn.dataset.mainname;
       } else {
         tagName = btn.dataset.name || btn.textContent;
@@ -604,7 +619,6 @@ class TagsManager {
       this.handleTagClick(catName, tagName);
     });
 
-    // Переключение состояния закрепления хедера
     pinBtn.addEventListener("click", () => {
       this.isHeaderPinned = !this.isHeaderPinned;
       this.updatePinState();
@@ -614,12 +628,10 @@ class TagsManager {
     const savedPinned = localStorage.getItem("headerPinned");
     this.isHeaderPinned = savedPinned !== null ? JSON.parse(savedPinned) : true;
 
-    // Переключение режима отображения тегов
     if (displayModeBtn) {
       displayModeBtn.addEventListener("click", () => this.toggleTagDisplayMode());
     }
 
-    // Переключение темы
     themeToggleBtn.addEventListener("click", () => this.toggleTheme());
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) {
@@ -627,7 +639,6 @@ class TagsManager {
       this.applyTheme();
     }
 
-    // СОБЫТИЯ ПОИСКА
     if (this.dom.searchToggleBtn) {
       this.dom.searchToggleBtn.addEventListener("click", () => this.toggleSearchMode());
       this.dom.searchInput.addEventListener("input", () => this.performSearch());
@@ -636,7 +647,7 @@ class TagsManager {
 
       this.dom.searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === "ArrowDown") {
-          e.preventDefault(); // Чтобы курсор не прыгал в конец/начало строки
+          e.preventDefault();
           this.navigateSearch(1);
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -645,7 +656,6 @@ class TagsManager {
       });
     }
 
-    // Оптимизированные обработчики скролла и изменения размера окна
     const updateLayoutDebounced = () => {
       if (!this.scrollTicking) {
         window.requestAnimationFrame(() => {
@@ -661,7 +671,6 @@ class TagsManager {
     window.addEventListener("resize", updateLayoutDebounced);
     window.addEventListener("scroll", updateLayoutDebounced);
 
-    // Обработка нажатия мыши вне основных контейнеров (для скролла наверх)
     document.body.addEventListener("mousedown", (e) => {
       if (
         !main.contains(e.target) &&
@@ -673,7 +682,6 @@ class TagsManager {
       }
     });
 
-    // Обработка клика по подсказкам скролла
     this.dom.scrollHints.forEach((h) =>
       h.addEventListener("click", () =>
         window.scrollTo({ top: 0, behavior: "smooth" }),
@@ -681,14 +689,11 @@ class TagsManager {
     );
   }
 
-  // Генерирует HTML-структуру категорий и кнопок тегов
   render() {
-    // при каждом рендере пересчитываем сколько кнопок имеют картинки
     this.imageTagCount = 0;
     const { container, navList, refSection, refContent, refToggleBtn } =
       this.dom;
 
-    // Очистка контейнеров
     container.innerHTML = "";
     navList.innerHTML = "";
 
@@ -702,16 +707,12 @@ class TagsManager {
       refSection.classList.add("util-hidden");
     }
 
-    // Создание DocumentFragment для категорий
     const categoriesFragment = document.createDocumentFragment();
-
-    // Создание DocumentFragment для навигации
     const navFragment = document.createDocumentFragment();
 
     this.categories.forEach((catData, catName) => {
-      // Создание DOM-элемента категории
       const catDiv = this.el("div", "category");
-      catData.dom = catDiv; // Сохранение ссылки на DOM-элемент категории
+      catData.dom = catDiv;
 
       const titleRow = this.el("div", "category-title-container");
       const left = this.el("div", "category-title-left");
@@ -780,17 +781,14 @@ class TagsManager {
         catDiv.append(subDiv);
       });
 
-      // Добавление категории во фрагмент
       categoriesFragment.appendChild(catDiv);
 
-      // Создание элемента навигации
       const navItem = this.el("button", "category-nav-item", catName);
       navItem.onclick = () => this.scrollToCat(catName);
       catData.navBtn = navItem;
       navFragment.appendChild(navItem);
     });
 
-    // Одноразовое добавление всех категорий и элементов навигации
     container.appendChild(categoriesFragment);
     navList.appendChild(navFragment);
 
@@ -798,11 +796,11 @@ class TagsManager {
     this.updatePinState();
   }
 
-  // Создает кнопку тега с заданными параметрами
   createBtn(tag) {
-    // элемент сам по себе остаётся <button>, но внутри у нас два
-    // блока: span.tag-text и (если задано) img.tag-image.
-    let cssClass = `tag-button util-tag-base${tag.isRequiredTag ? " required-tag" : (tag.isMainTag ? " main-tag" : "")}`;
+    let cssClass = `tag-button util-tag-base`;
+    if (tag.displayHighlightIndex !== -1) {
+      cssClass += ` highlight-${tag.displayHighlightIndex}`;
+    }
     if (tag.image) cssClass += " has-image";
 
     const btn = this.el("button", cssClass, "", {
@@ -811,13 +809,11 @@ class TagsManager {
       "data-mainname": tag.mainName || tag.name,
     });
 
-    // текстовая часть
     const textSpan = document.createElement("span");
     textSpan.className = "tag-text";
     textSpan.textContent = tag.name;
     btn.appendChild(textSpan);
 
-    // графика, если есть
     if (tag.image) {
       const img = document.createElement("img");
       img.className = "tag-image";
@@ -825,10 +821,8 @@ class TagsManager {
       img.alt = tag.name;
       btn.appendChild(img);
 
-      // увеличиваем счётчик, чтобы потом решить показывать переключатель
       this.imageTagCount += 1;
 
-      // начальная видимость в зависимости от режима
       if (this.displayMode === "text") {
         img.classList.add("util-hidden");
       } else {
@@ -844,7 +838,6 @@ class TagsManager {
     return btn;
   }
 
-  // Переключает и сохраняет состояние темы (Авто/Темная/Светлая)
   toggleTheme() {
     const states = ["auto", "dark", "light"];
     this.themeState =
@@ -853,7 +846,6 @@ class TagsManager {
     localStorage.setItem("theme", this.themeState);
   }
 
-  // Применяет выбранную тему к элементу <html> и обновляет иконки
   applyTheme() {
     const html = document.documentElement;
     this.themeState === "auto"
@@ -864,7 +856,6 @@ class TagsManager {
     this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
   }
 
-  // Показывает или прячет кнопку переключения режима и устанавливает иконку
   updateDisplayToggleVisibility() {
     const btn = this.dom.displayModeBtn;
     if (!btn) return;
@@ -885,7 +876,6 @@ class TagsManager {
     displayModeBtn.title = showingText ? "Показать изображения" : "Показать текст";
   }
 
-  // Переключает режим текста/изображений у всех кнопок
   toggleTagDisplayMode() {
     const headerHeight = this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
 
@@ -909,7 +899,6 @@ class TagsManager {
     this.displayMode = this.displayMode === "text" ? "image" : "text";
     this.updateDisplayToggleIcon();
 
-    // обновляем у каждой кнопки с картинкой
     this.categories.forEach((cat) => {
       cat.tags.forEach((tag) => {
         if (tag.image && tag.domButtons) {
@@ -943,12 +932,10 @@ class TagsManager {
     });
   }
 
-  // Группирует теги в подгруппы для рендеринга
   groupTags(catData) {
     const subs = new Map();
     const processed = new Set();
 
-    // Инициализация domButtons для всех тегов
     catData.tags.forEach((tag) => {
       tag.domButtons = [];
     });
@@ -976,13 +963,11 @@ class TagsManager {
     return subs;
   }
 
-  // Обрабатывает клик по кнопке тега
   handleTagClick(catName, tagName) {
     const cat = this.categories.get(catName);
     const tag = cat.tags.get(tagName);
     const main = tag.mainName;
 
-    // Создает снэпшот состояния для возможности отката
     const snapshot = {
       selectedTags: new Set(cat.selectedTags),
       orderedTags: [...cat.orderedTags],
@@ -1000,7 +985,6 @@ class TagsManager {
       cat.selectedVariants.delete(main);
     };
 
-    // Применяет логику выбора (single, ordered, multiple)
     if (cat.type === "single") {
       const isActive = cat.selectedTags.has(main);
       cat.selectedTags.forEach((m) => {
@@ -1021,9 +1005,7 @@ class TagsManager {
       cat.orderedTags.sort((a, b) => {
         const tagA = cat.tags.get(a);
         const tagB = cat.tags.get(b);
-        const weightA = tagA.isRequiredTag ? 2 : (tagA.isMainTag ? 1 : 0);
-        const weightB = tagB.isRequiredTag ? 2 : (tagB.isMainTag ? 1 : 0);
-        return weightB - weightA;
+        return tagB.sortWeight - tagA.sortWeight;
       });
     } else {
       const curVar = cat.selectedVariants.get(main);
@@ -1031,53 +1013,44 @@ class TagsManager {
       else setSel(tagName);
     }
 
-    // Если тег сейчас выбран и у него есть требование другого тега
     if (cat.selectedTags.has(main) && tag.resolvedRequiredTags) {
       this.processRequiredTag(tag.resolvedRequiredTags);
     }
 
-    // ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА ЛИМИТА СИМВОЛОВ - только если лимит задан
     if (this.hasCharacterLimit) {
       const newStr = this.generateOutputString();
       const limit = this.tagsData.characterLimit;
       const isLim = this.dom.limitBox.checked;
 
       if (isLim && newStr.length > limit) {
-        // Откат состояния, если лимит превышен
         cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
 
         cat.selectedTags = snapshot.selectedTags;
         cat.orderedTags = snapshot.orderedTags;
         cat.selectedVariants = snapshot.selectedVariants;
 
-        // Восстановление глобальных ссылок
         cat.selectedTags.forEach((m) => this.selectedTags.set(m, catName));
 
-        // Визуальное уведомление об ошибке
         this.flashLimitError();
         return;
       }
     }
 
-    // Обновление интерфейса
     const newStr = this.generateOutputString();
     this.dom.input.value = newStr;
     this.saveStateToStorage();
     this.updateLimitDisplay(newStr.length);
-    this.updateCategoryDOM(cat); // Обновление только одной категории
+    this.updateCategoryDOM(cat);
     this.updateAlt();
   }
 
-  // Обрабатывает логику обязательного связанного тега
   processRequiredTag(resolvedTags) {
     resolvedTags.forEach(({ category, tagName }) => {
       const targetTag = category.tags.get(tagName);
       const targetMain = targetTag.mainName;
 
-      // Если тег уже выбран (в любом варианте), ничего не делаем
       if (category.selectedTags.has(targetMain)) return;
 
-      // Активируем тег
       category.selectedTags.add(targetMain);
       this.selectedTags.set(targetMain, category.name);
       category.selectedVariants.set(targetMain, tagName);
@@ -1087,20 +1060,15 @@ class TagsManager {
         category.orderedTags.sort((a, b) => {
           const tagA = category.tags.get(a);
           const tagB = category.tags.get(b);
-          const weightA = tagA.isRequiredTag ? 2 : (tagA.isMainTag ? 1 : 0);
-          const weightB = tagB.isRequiredTag ? 2 : (tagB.isMainTag ? 1 : 0);
-          return weightB - weightA;
+          return tagB.sortWeight - tagA.sortWeight;
         });
       }
 
-      // Обновляем визуальное состояние категории, в которой находится активированный тег
       this.updateCategoryDOM(category);
     });
   }
 
-  // Парсит входную строку из поля ввода, обновляя внутреннее состояние
   parseInput(str, updateInputValue = true) {
-    // Очистка предыдущего состояния
     this.selectedTags.clear();
     this.categories.forEach((c) => {
       c.selectedTags.clear();
@@ -1109,9 +1077,6 @@ class TagsManager {
     });
     this.unrecognizedTags = [];
 
-    // Предобработка входной строки:
-    // 1) убираем крайние пробелы до и после текста
-    // 2) добавляем пробел в конец, чтобы trailing comma не стала частью последнего тега
     const processedStr = str.trim() + " ";
 
     const rawTags = processedStr
@@ -1121,7 +1086,6 @@ class TagsManager {
 
     const recognizedIndices = new Set();
 
-    // Поиск тегов по прямому имени, алиасу или альтернативному имени
     const findTagInMaps = (term) => {
       const maps = [this.tagIndexMap, this.knownAsMap, this.altTagSearchMap];
       for (const map of maps) {
@@ -1129,7 +1093,7 @@ class TagsManager {
           return map.get(term);
         }
       }
-      return null; // Возвращаем null, если ничего не найдено
+      return null;
     };
 
     rawTags.forEach((tNameOriginal, tagIndex) => {
@@ -1137,7 +1101,6 @@ class TagsManager {
       const foundIndicesArray = findTagInMaps(tName);
 
       if (foundIndicesArray !== null) {
-        // Проходим по всем найденным индексам, активируя сразу все привязанные теги
         foundIndicesArray.forEach((foundIndex) => {
           const info = this.allTagsInOrder[foundIndex];
           const cat = info.catData;
@@ -1157,7 +1120,6 @@ class TagsManager {
           this.selectedTags.set(main, info.category);
         });
 
-        // Отмечаем токен как распознанный (один раз для всех сработавших тегов)
         recognizedIndices.add(tagIndex);
       }
     });
@@ -1168,22 +1130,18 @@ class TagsManager {
         !this.unrecognizedIgnoreSet.has(tagStr.toLowerCase()),
     );
 
-    // Перезаписывает поле ввода форматированной строкой
     if (updateInputValue) {
       this.dom.input.value = this.generateOutputString();
     }
   }
 
-  // Генерирует итоговую строку тегов из внутреннего состояния
   generateOutputString() {
     const res = [];
     this.processSelectedTags((name) => res.push(name));
     return res.join(this.tagsData.separator);
   }
 
-  // Итератор по выбранным тегам с учетом порядка и типа категории
   processSelectedTags(callback) {
-    // Порядок категорий берется из конфигурации
     this.tagsData.categories.forEach((cfg) => {
       const cat = this.categories.get(cfg.name);
       const run = (main) => {
@@ -1205,7 +1163,6 @@ class TagsManager {
     });
   }
 
-  // Обновляет весь пользовательский интерфейс (поле ввода, кнопки, предупреждения)
   updateUI(updateInputFromState = true) {
     if (updateInputFromState) {
       const str = this.generateOutputString();
@@ -1223,13 +1180,11 @@ class TagsManager {
       unrecWarn.classList.add("util-hidden");
     }
 
-    this.updateFullState(); // Обновляет все кнопки
+    this.updateFullState();
     this.updateAlt();
   }
 
-  // Обновляет индикатор лимита символов
   updateLimitDisplay(len) {
-    // Если лимит не задан, не обновляем отображение
     if (!this.hasCharacterLimit) return;
 
     const limit = this.tagsData.characterLimit;
@@ -1238,9 +1193,7 @@ class TagsManager {
     this.dom.limitDisp.classList.toggle("exceeded", isLim && len > limit);
   }
 
-  // Визуально сигнализирует о превышении лимита символов
   flashLimitError() {
-    // Если лимит не задан, не показываем ошибку
     if (!this.hasCharacterLimit) return;
 
     this.dom.limitDisp.classList.add("exceeded");
@@ -1257,40 +1210,33 @@ class TagsManager {
     }, 800);
   }
 
-  // Обновляет визуальное состояние кнопок только для одной категории
   updateCategoryDOM(cat) {
     if (!cat.dom) return;
     this.updateButtonsInContainer(cat.dom, cat);
     this.refreshGlobalWarning();
   }
 
-  // Обновляет все кнопки во всех категориях
   updateFullState() {
     this.categories.forEach((cat) => {
       if (cat.dom) this.updateButtonsInContainer(cat.dom, cat);
     });
     this.refreshGlobalWarning();
-    // кнопка переключения показана/скрыта при общем обновлении
     this.updateDisplayToggleVisibility();
   }
 
-  // Основная функция для обновления классов кнопок и предупреждений внутри контейнера категории
   updateButtonsInContainer(container, cat) {
-    // Более эффективный подход - использование сохранённых ссылок на кнопки
     cat.tags.forEach((tag) => {
       if (tag.domButtons && tag.domButtons.length > 0) {
         tag.domButtons.forEach((btn) => {
-          const tName = tag.name; // Используем имя из объекта тега
+          const tName = tag.name;
           const sel =
             cat.selectedTags.has(tag.mainName) &&
             cat.selectedVariants.get(tag.mainName) === tName;
 
-          // Установка класса 'selected'
           if (btn.classList.contains("selected") !== sel) {
             btn.classList.toggle("selected", sel);
           }
 
-          // Установка порядка для ordered-категорий
           if (cat.type === "ordered") {
             if (sel) {
               const order = cat.orderedTags.indexOf(tag.mainName) + 1;
@@ -1314,28 +1260,62 @@ class TagsManager {
       }
     });
 
-    // Логика предупреждений о требованиях категории
     const warn = cat.warnDom;
     let showWarn = false;
-    let txt = "";
+    let txtHtml = "";
 
-    if (cat.requirement === "atLeastOne") {
+    const reqs = [cat.requirement].flat().filter(Boolean);
+    const hasHighlightsReq = reqs.some(r => r !== "atLeastOne");
+
+    if (hasHighlightsReq) {
+      const requiredHighlights = reqs.filter(r => r !== "atLeastOne");
+      const missingHighlights = [];
+
+      requiredHighlights.forEach(reqHighlight => {
+        const hasTagWithHighlight = [...cat.tags.values()].some(tag => tag.highlights.includes(reqHighlight));
+
+        if (hasTagWithHighlight) {
+          const isSatisfied = [...cat.selectedTags].some(mainName => {
+            const tagObj = cat.tags.get(mainName);
+            return tagObj && tagObj.highlights.includes(reqHighlight);
+          });
+
+          if (!isSatisfied) {
+            missingHighlights.push(reqHighlight);
+          }
+        }
+      });
+
+      if (missingHighlights.length > 0) {
+        showWarn = true;
+        if (cat.overrideRequirementText) {
+          txtHtml = cat.overrideRequirementText;
+        } else {
+          const styledNames = missingHighlights.map(name => {
+            const idx = (this.tagsData.highlightedTags || []).findIndex(h => h.name === name);
+            if (idx !== -1) {
+              return `<span class="highlight-${idx}-text">${name}</span>`;
+            }
+            return name;
+          });
+
+          let namesStr = "";
+          if (styledNames.length === 1) namesStr = styledNames[0];
+          else if (styledNames.length === 2) namesStr = `${styledNames[0]} и ${styledNames[1]}`;
+          else {
+            const last = styledNames.pop();
+            namesStr = `${styledNames.join(", ")} и ${last}`;
+          }
+
+          txtHtml = `Необходимо выбрать хотя бы один тег из ${namesStr}`;
+        }
+      }
+    } else if (reqs.includes("atLeastOne")) {
       showWarn = cat.selectedTags.size === 0;
-      txt =
-        cat.overrideRequirementText || "Необходимо выбрать хотя бы один тег";
-    } else if (cat.requirement === "atLeastOneMain") {
-      showWarn = ![...cat.selectedTags].some((m) => cat.tags.get(m).isMainTag);
-      txt =
-        cat.overrideRequirementText ||
-        "Необходимо выбрать хотя бы один главный тег";
-    } else if (cat.requirement === "atLeastOneRequired") { // ДОБАВЛЕНО
-      showWarn = ![...cat.selectedTags].some((m) => cat.tags.get(m).isRequiredTag);
-      txt =
-        cat.overrideRequirementText ||
-        "Необходимо выбрать хотя бы один обязательный тег";
+      txtHtml = cat.overrideRequirementText || "Необходимо выбрать хотя бы один тег";
     }
 
-    if (warn.textContent !== txt) warn.textContent = txt;
+    if (warn.innerHTML !== txtHtml) warn.innerHTML = txtHtml;
     warn.classList.toggle("util-hidden", !showWarn);
     if (cat.navBtn) {
       cat.navBtn.classList.toggle("nav-item-error", showWarn);
@@ -1344,13 +1324,11 @@ class TagsManager {
     return showWarn;
   }
 
-  // Генерирует и отображает строку альтернативных тегов
   updateAlt() {
     const alts = [];
     const seen = new Set();
     let hasDuplicates = false;
 
-    // Сначала собираем все альтернативы и проверяем на дубликаты
     this.processSelectedTags((_, tagObj) => {
       if (tagObj.alternative) {
         const norm = tagObj.alternative
@@ -1365,16 +1343,14 @@ class TagsManager {
       }
     });
 
-    // Показываем или скрываем checkbox в зависимости от наличия дубликатов
     const dupControls = this.dom.dupBox.closest('.alternative-controls');
     if (hasDuplicates) {
       dupControls.classList.remove('util-hidden');
     } else {
       dupControls.classList.add('util-hidden');
-      this.dom.dupBox.checked = false; // Сбрасываем чекбокс если скрываем
+      this.dom.dupBox.checked = false;
     }
 
-    // Теперь фильтруем дубликаты если чекбокс отмечен
     const filteredAlts = [];
     if (this.dom.dupBox.checked) {
       seen.clear();
@@ -1391,22 +1367,18 @@ class TagsManager {
 
     const s = filteredAlts.join(this.tagsData.alternativeSeparator);
 
-    // ВСЕГДА обновляем видимость секции в зависимости от наличия текста
     const shouldBeVisible = s.length > 0;
 
-    // Проверяем, нужно ли изменить видимость
     if (
       shouldBeVisible !== !this.dom.altSection.classList.contains("util-hidden")
     ) {
       this.dom.altSection.classList.toggle("util-hidden", !shouldBeVisible);
     }
 
-    // Обновляем значение только если оно изменилось
     if (this.dom.altOut.value !== s) {
       this.dom.altOut.value = s;
     }
 
-    // Обновляем alternativeName
     if (this.tagsData.alternativeName && shouldBeVisible) {
       this.dom.altName.textContent = this.tagsData.alternativeName;
       this.dom.altName.classList.remove('util-hidden');
@@ -1414,7 +1386,6 @@ class TagsManager {
       this.dom.altName.classList.add('util-hidden');
     }
 
-    // Обновление смещения хедера при изменении видимости секции
     if (shouldBeVisible && this.isHeaderPinned) {
       if (!this.scrollTicking) {
         window.requestAnimationFrame(() => this.updateHeaderOffset());
@@ -1422,7 +1393,6 @@ class TagsManager {
     }
   }
 
-  // Плавно прокручивает страницу до указанной категории
   scrollToCat(name) {
     const el = this.categories.get(name)?.dom;
     if (!el) return;
@@ -1431,7 +1401,6 @@ class TagsManager {
     window.scrollTo({ top, behavior: "smooth" });
   }
 
-  // Устанавливает отступ для основного контента, учитывая высоту закрепленного хедера
   updateHeaderOffset() {
     if (!this.isHeaderPinned) {
       this.dom.main.style.paddingTop = "";
@@ -1444,7 +1413,6 @@ class TagsManager {
     }
   }
 
-  // Обновляет визуальное состояние кнопки закрепления и самого хедера
   updatePinState() {
     const { pinBtn, header, main, pinText } = this.dom;
     const act = this.isHeaderPinned;
@@ -1457,14 +1425,12 @@ class TagsManager {
     this.updateHeaderOffset();
   }
 
-  // Показывает/скрывает навигацию по категориям в зависимости от необходимости
   updateNavVis() {
     const need =
       this.dom.main.scrollHeight > window.innerHeight || this.isHeaderPinned;
     this.dom.nav.classList.toggle("util-hidden", !need);
   }
 
-  // Показывает/скрывает подсказки скролла наверх
   updateScrollHints() {
     const vis =
       window.innerWidth > this.dom.main.offsetWidth + 200 &&
@@ -1479,23 +1445,19 @@ class TagsManager {
 
     const isHidden = this.dom.globalCatWarn.classList.contains("util-hidden");
 
-    // Показываем/скрываем блок
     this.dom.globalCatWarn.classList.toggle("util-hidden", !hasAnyError);
 
-    // Если видимость изменилась и хедер закреплен, обновляем отступ контента
     if (isHidden !== !hasAnyError && this.isHeaderPinned) {
       this.updateHeaderOffset();
     }
   }
 
-  // Показывает основной интерфейс приложения
   showUI() {
     this.dom.loading.classList.add("util-hidden");
     this.dom.error.classList.add("util-hidden");
     this.dom.app.classList.remove("util-hidden");
   }
 
-  // Отображает сообщение об ошибке
   error(detailText, title = "Ошибка загрузки конфигурации") {
     this.dom.loading.classList.add("util-hidden");
     this.dom.errTitle.textContent = title;
@@ -1507,28 +1469,22 @@ class TagsManager {
     this.dom.app.classList.add("util-hidden");
   }
 
-  // Включает/выключает режим поиска
   toggleSearchMode() {
     this.isSearchActive = !this.isSearchActive;
 
-    // Переключаем визуальное состояние кнопки (зеленая рамка/фон)
     this.dom.searchToggleBtn.classList.toggle("active", this.isSearchActive);
 
-    // Переключаем видимость полей
     this.dom.mainInputWrap.classList.toggle("util-hidden", this.isSearchActive);
     this.dom.searchInputWrap.classList.toggle("util-hidden", !this.isSearchActive);
 
     if (!this.isSearchActive) {
-      // При выходе из поиска сбрасываем всё
       this.clearSearch();
     } else {
-      // При входе фокусируемся на поле и запускаем поиск (вдруг там остался текст)
       this.dom.searchInput.focus();
       this.performSearch();
     }
   }
 
-  // Очищает поиск и снимает выделения
   clearSearch() {
     this.dom.searchInput.value = "";
     this.searchResults = [];
@@ -1537,7 +1493,6 @@ class TagsManager {
     this.updateSearchHighlight();
   }
 
-  // Ищет теги по полю description
   performSearch() {
     const query = this.dom.searchInput.value.trim().toLowerCase();
     this.searchResults = [];
@@ -1548,13 +1503,10 @@ class TagsManager {
       return;
     }
 
-    // Проходим по всем категориям и тегам
     this.categories.forEach((cat) => {
       cat.tags.forEach((tag) => {
-        // Проверяем наличие описания и вхождение искомой строки
         if ([tag.name].flat().some(name => name.toLowerCase().includes(query)) ||
           tag.description?.toLowerCase().includes(query)) {
-          // Если у тега есть сгенерированная DOM-кнопка (берем первую)
           if (tag.domButtons?.length > 0) {
             this.searchResults.push(tag.domButtons[0]);
           }
@@ -1571,13 +1523,11 @@ class TagsManager {
     this.updateSearchHighlight();
   }
 
-  // Переключение между результатами
   navigateSearch(direction) {
     if (this.searchResults.length === 0) return;
 
     this.currentSearchIndex += direction;
 
-    // Ограничиваем индекс
     if (this.currentSearchIndex < 0) {
       this.currentSearchIndex = 0;
     }
@@ -1588,40 +1538,33 @@ class TagsManager {
     this.updateSearchHighlight();
   }
 
-  // Обновляет визуальное выделение и прокручивает к результату
   updateSearchHighlight() {
-    // 1. Снимаем выделение со всех тегов
     document.querySelectorAll(".search-match-active").forEach(btn => {
       btn.classList.remove("search-match-active");
     });
 
     const total = this.searchResults.length;
 
-    // 2. Если ничего не найдено, прячем кнопки-стрелки
     if (total === 0) {
       this.dom.searchPrevBtn.disabled = true;
       this.dom.searchNextBtn.disabled = true;
       return;
     }
 
-    // 3. Выделяем текущий элемент
     const activeBtn = this.searchResults[this.currentSearchIndex];
     if (activeBtn) {
       activeBtn.classList.add("search-match-active");
 
-      // 4. Плавно прокручиваем к нему с учетом закрепленного хедера
       const headerHeight = this.dom.header && this.isHeaderPinned ? this.dom.header.offsetHeight : 0;
-      const offset = headerHeight + 30; // 30px отступ сверху
+      const offset = headerHeight + 30;
       const top = activeBtn.getBoundingClientRect().top + window.scrollY - offset;
 
       window.scrollTo({ top, behavior: "smooth" });
     }
 
-    // 5. Активируем/деактивируем стрелки в зависимости от границ
     this.dom.searchPrevBtn.disabled = this.currentSearchIndex === 0;
     this.dom.searchNextBtn.disabled = this.currentSearchIndex === total - 1;
   }
 }
 
-// Инициализация при полной загрузке DOM
 document.addEventListener("DOMContentLoaded", () => new TagsManager());
