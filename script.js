@@ -1,3 +1,9 @@
+// Перехватываем URL текущего скрипта во время его выполнения
+const currentScriptUrl = document.currentScript ? document.currentScript.src : '';
+// Извлекаем значение параметра v (например, "7" из "?v=7")
+const versionMatch = currentScriptUrl.match(/[?&]v=([^&]+)/);
+const APP_VERSION = versionMatch ? versionMatch[1] : 'unknown';
+
 class TagsManager {
   constructor() {
     // Начинает асинхронную загрузку конфигурационного файла tags.json
@@ -49,11 +55,9 @@ class TagsManager {
     } else if (action === "set") {
       const currentData = this.getCacheMetadata(fileName);
       const newData = {
-        cacheMaxAgeHours:
-          data.cacheMaxAgeHours || currentData.cacheMaxAgeHours || 24,
-        lastSuccessfulFetchTime: data.newContent
-          ? Date.now()
-          : currentData.lastSuccessfulFetchTime || 0,
+        cacheMaxAgeHours: data.cacheMaxAgeHours || currentData.cacheMaxAgeHours || 24,
+        lastSuccessfulFetchTime: data.newContent ? Date.now() : currentData.lastSuccessfulFetchTime || 0,
+        scriptVersion: APP_VERSION
       };
       localStorage.setItem(key, JSON.stringify(newData));
       return newData;
@@ -95,10 +99,14 @@ class TagsManager {
 
     const maxAgeHours = cacheMeta.cacheMaxAgeHours || 24;
     const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
-    const isCacheExpired =
-      lastFetchTime === 0 || now - lastFetchTime > maxAgeMs;
 
-    const fetchMode = isCacheExpired ? "no-cache" : "default";
+    // ТРИГГЕР 1: Истекло время жизни кэша
+    const isCacheExpired = lastFetchTime === 0 || now - lastFetchTime > maxAgeMs;
+    // ТРИГГЕР 2: Версия скрипта из HTML не совпадает с той, что в кэше
+    const isVersionChanged = cacheMeta.scriptVersion !== APP_VERSION;
+
+    // Обновляем кэш, если сработал любой из триггеров
+    const fetchMode = (isCacheExpired || isVersionChanged) ? "no-cache" : "default";
 
     try {
       return await fetchFile(fileName, fetchMode);
