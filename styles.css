@@ -604,6 +604,29 @@ body {
     transform: translateY(-2px);
 }
 
+.category-title-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.category-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--label-light-color, var(--category-title-color));
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .category-label {
+    color: var(--label-dark-color, var(--label-light-color, var(--category-title-color)));
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .category-label {
+        color: var(--label-dark-color, var(--label-light-color, var(--category-title-color)));
+    }
+}
+
 .category-warning {
     color: var(--warning-color);
     font-size: var(--font-size-sm);

@@ -744,13 +744,29 @@ class TagsManager {
         };
       }
 
+      const right = this.el("div", "category-title-right");
+
+      if (catData.label && catData.label.text) {
+        const labelEl = this.el("div", "category-label", catData.label.text);
+        if (catData.label.light) {
+          labelEl.style.setProperty("--label-light-color", catData.label.light);
+        }
+        if (catData.label.dark) {
+          labelEl.style.setProperty("--label-dark-color", catData.label.dark);
+        }
+        right.append(labelEl);
+      }
+
       const scrollTop = this.el("button", "category-scroll-top", "˄", {
         "aria-label": "Наверх",
       });
       scrollTop.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-      titleRow.append(left, scrollTop);
+      right.append(scrollTop);
+
+      titleRow.append(left, right);
       const warnEl = this.el("div", "category-warning util-hidden");
+
       catData.warnDom = warnEl;
       catDiv.append(titleRow);
       if (refContent) catDiv.append(refContent);
