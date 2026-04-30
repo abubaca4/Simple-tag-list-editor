@@ -279,7 +279,7 @@ class TagsManager {
 
     document.body.addEventListener("mousedown", (e) => {
       if (!main.contains(e.target) && !header.contains(e.target) && !e.target.closest(".scroll-hint")) {
-        if (window.scrollY > 300) window.scrollTo({ top: 0, behavior: "smooth" });
+        if (window.scrollY > this.getScrollThreshold()) window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
 
@@ -1041,7 +1041,7 @@ class TagsManager {
   }
 
   updateScrollHints() {
-    const vis = window.innerWidth > this.dom.main.offsetWidth + 200 && window.scrollY > 100;
+    const vis = window.innerWidth > this.dom.main.offsetWidth + 200 && window.scrollY > this.getScrollThreshold();
     this.dom.scrollHints.forEach((h) => h.classList.toggle("visible", vis));
   }
 
@@ -1201,6 +1201,10 @@ class TagsManager {
     const offset = this.isHeaderPinned ? (this.dom.header.offsetHeight + customOffset) : 20;
     const top = element.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: "smooth" });
+  }
+
+  getScrollThreshold() {
+    return Math.max(300, window.innerHeight * 0.3);
   }
 
   showUI() {
