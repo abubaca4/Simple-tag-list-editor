@@ -186,7 +186,9 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
-    transition: background-color var(--transition-normal), color var(--transition-normal);
+    transition:
+        background-color var(--transition-normal),
+        color var(--transition-normal);
 }
 
 /* ==========================================================================
@@ -284,29 +286,35 @@ body {
 
 @keyframes error-pulse {
     0% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--limit-exceeded), transparent 40%);
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--limit-exceeded), transparent 40%);
     }
 
     70% {
-        box-shadow: 0 0 0 6px color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+        box-shadow: 0 0 0 6px
+            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
     }
 
     100% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--limit-exceeded), transparent 100%);
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--limit-exceeded), transparent 100%);
     }
 }
 
 @keyframes search-pulse {
     0% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--selected-border), transparent 40%);
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--selected-border), transparent 40%);
     }
 
     70% {
-        box-shadow: 0 0 0 6px color-mix(in srgb, var(--selected-border), transparent 100%);
+        box-shadow: 0 0 0 6px
+            color-mix(in srgb, var(--selected-border), transparent 100%);
     }
 
     100% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--selected-border), transparent 100%);
+        box-shadow: 0 0 0 0
+            color-mix(in srgb, var(--selected-border), transparent 100%);
     }
 }
 
@@ -374,6 +382,11 @@ body {
 [data-tooltip] {
     position: relative;
     cursor: help;
+}
+
+[data-tooltip]::before,
+[data-tooltip]::after {
+    pointer-events: none;
 }
 
 [data-tooltip]:hover {
@@ -666,12 +679,18 @@ body {
 }
 
 [data-theme="dark"] .category-label {
-    color: var(--label-dark-color, var(--label-light-color, var(--category-title-color)));
+    color: var(
+        --label-dark-color,
+        var(--label-light-color, var(--category-title-color))
+    );
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .category-label {
-        color: var(--label-dark-color, var(--label-light-color, var(--category-title-color)));
+        color: var(
+            --label-dark-color,
+            var(--label-light-color, var(--category-title-color))
+        );
     }
 }
 
@@ -978,7 +997,6 @@ body {
 }
 
 @media (max-width: 1200px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 40px);
@@ -987,7 +1005,6 @@ body {
 }
 
 @media (max-width: 768px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 30px);
@@ -1041,7 +1058,6 @@ body {
 }
 
 @media (max-width: 480px) {
-
     .header-panel,
     .header-panel.pinned {
         width: calc(100% - 20px);
