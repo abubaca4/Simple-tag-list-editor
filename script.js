@@ -1,8 +1,8 @@
 // Перехватываем URL текущего скрипта во время его выполнения
-const currentScriptUrl = document.currentScript?.src ?? '';
+const currentScriptUrl = document.currentScript?.src ?? "";
 // Извлекаем значение параметра v (например, "7" из "?v=7")
 const versionMatch = currentScriptUrl.match(/[?&]v=([^&]+)/);
-const APP_VERSION = versionMatch?.[1] ?? 'unknown';
+const APP_VERSION = versionMatch?.[1] ?? "unknown";
 
 class TagsManager {
   constructor() {
@@ -87,13 +87,18 @@ class TagsManager {
       this.updateDisplayToggleVisibility();
 
       const savedState = this.loadStateFromStorage();
-      const initialValue = savedState?.trim() ? savedState : this.dom.input.value;
+      const initialValue = savedState?.trim()
+        ? savedState
+        : this.dom.input.value;
 
       if (initialValue) {
         this.parseInput(initialValue, true);
       }
 
-      this.dom.limitBox.parentElement.classList.toggle("util-hidden", !this.hasCharacterLimit);
+      this.dom.limitBox.parentElement.classList.toggle(
+        "util-hidden",
+        !this.hasCharacterLimit,
+      );
       if (this.hasCharacterLimit) {
         this.updateLimitDisplay(this.dom.input.value.length);
       }
@@ -103,7 +108,10 @@ class TagsManager {
     } catch (e) {
       console.error(e);
       if (!this.dom.error.classList.contains("util-hidden")) return;
-      this.error(`Критическая ошибка инициализации: ${e.message}`, "Критическая ошибка");
+      this.error(
+        `Критическая ошибка инициализации: ${e.message}`,
+        "Критическая ошибка",
+      );
     }
   }
 
@@ -158,8 +166,18 @@ class TagsManager {
 
   setupStaticEvents() {
     const {
-      input, limitBox, dupBox, pinBtn, main, header, container,
-      themeToggleBtn, displayModeBtn, unrecWarn, refToggleBtn, refContent
+      input,
+      limitBox,
+      dupBox,
+      pinBtn,
+      main,
+      header,
+      container,
+      themeToggleBtn,
+      displayModeBtn,
+      unrecWarn,
+      refToggleBtn,
+      refContent,
     } = this.dom;
 
     input.addEventListener("input", () => {
@@ -224,8 +242,13 @@ class TagsManager {
     container.addEventListener("click", (e) => {
       const btn = e.target.closest(".tag-button");
       if (!btn) return;
-      const catName = btn.closest(".category").querySelector(".category-title").textContent;
-      const tagName = (e.target.tagName === "IMG" && btn.dataset.mainname) ? btn.dataset.mainname : (btn.dataset.name || btn.textContent);
+      const catName = btn
+        .closest(".category")
+        .querySelector(".category-title").textContent;
+      const tagName =
+        e.target.tagName === "IMG" && btn.dataset.mainname
+          ? btn.dataset.mainname
+          : btn.dataset.name || btn.textContent;
       this.handleTagClick(catName, tagName);
     });
 
@@ -247,10 +270,16 @@ class TagsManager {
       this.applyTheme();
     }
 
-    this.dom.searchToggleBtn.addEventListener("click", () => this.toggleSearchMode());
+    this.dom.searchToggleBtn.addEventListener("click", () =>
+      this.toggleSearchMode(),
+    );
     this.dom.searchInput.addEventListener("input", () => this.performSearch());
-    this.dom.searchPrevBtn.addEventListener("click", () => this.navigateSearch(-1));
-    this.dom.searchNextBtn.addEventListener("click", () => this.navigateSearch(1));
+    this.dom.searchPrevBtn.addEventListener("click", () =>
+      this.navigateSearch(-1),
+    );
+    this.dom.searchNextBtn.addEventListener("click", () =>
+      this.navigateSearch(1),
+    );
 
     this.dom.searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === "ArrowDown") {
@@ -278,13 +307,20 @@ class TagsManager {
     window.addEventListener("scroll", updateLayoutDebounced);
 
     document.body.addEventListener("mousedown", (e) => {
-      if (!main.contains(e.target) && !header.contains(e.target) && !e.target.closest(".scroll-hint")) {
-        if (window.scrollY > this.getScrollThreshold()) window.scrollTo({ top: 0, behavior: "smooth" });
+      if (
+        !main.contains(e.target) &&
+        !header.contains(e.target) &&
+        !e.target.closest(".scroll-hint")
+      ) {
+        if (window.scrollY > this.getScrollThreshold())
+          window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
 
     this.dom.scrollHints.forEach((h) =>
-      h.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" })),
+      h.addEventListener("click", () =>
+        window.scrollTo({ top: 0, behavior: "smooth" }),
+      ),
     );
   }
 
@@ -320,7 +356,9 @@ class TagsManager {
 
         if (Array.isArray(this.tagsData.highlightedTags)) {
           for (const hName of tagHighlights) {
-            const index = this.tagsData.highlightedTags.findIndex(h => h.name === hName);
+            const index = this.tagsData.highlightedTags.findIndex(
+              (h) => h.name === hName,
+            );
             if (index !== -1) {
               const weight = this.tagsData.highlightedTags.length - index;
               if (weight > highestPriorityWeight) {
@@ -333,25 +371,40 @@ class TagsManager {
 
         names.forEach((name) => {
           catData.tags.set(name, {
-            name, mainName: main, alternative: t.alternative || "",
-            subgroup: t.subgroup || "", description: t.description || "",
-            image: imageUrl, isVariant: name !== main, knownAs: t.knownAs || [],
-            requiredTag: t.requiredTag || null, highlights: tagHighlights,
-            displayHighlightIndex: highestPriorityIndex, sortWeight: highestPriorityWeight
+            name,
+            mainName: main,
+            alternative: t.alternative || "",
+            subgroup: t.subgroup || "",
+            description: t.description || "",
+            image: imageUrl,
+            isVariant: name !== main,
+            knownAs: t.knownAs || [],
+            requiredTag: t.requiredTag || null,
+            highlights: tagHighlights,
+            displayHighlightIndex: highestPriorityIndex,
+            sortWeight: highestPriorityWeight,
           });
 
-          const tagInfo = { name, mainName: main, category: cat.name, catData, tagConfig: t };
+          const tagInfo = {
+            name,
+            mainName: main,
+            category: cat.name,
+            catData,
+            tagConfig: t,
+          };
           this.allTagsInOrder.push(tagInfo);
           const currentIndex = this.allTagsInOrder.length - 1;
           const lowerName = name.toLowerCase();
 
-          if (!this.tagIndexMap.has(lowerName)) this.tagIndexMap.set(lowerName, []);
+          if (!this.tagIndexMap.has(lowerName))
+            this.tagIndexMap.set(lowerName, []);
           this.tagIndexMap.get(lowerName).push(currentIndex);
 
           if (Array.isArray(t?.knownAs)) {
             t.knownAs.forEach((alias) => {
               const cleanAlias = alias.trim().toLowerCase();
-              if (!this.knownAsMap.has(cleanAlias)) this.knownAsMap.set(cleanAlias, []);
+              if (!this.knownAsMap.has(cleanAlias))
+                this.knownAsMap.set(cleanAlias, []);
               this.knownAsMap.get(cleanAlias).push(currentIndex);
             });
           }
@@ -359,7 +412,8 @@ class TagsManager {
           if (names.length === 1 && name.includes("/")) {
             this.generateAltNames(name).forEach((altName) => {
               const lowerAlt = altName.toLowerCase();
-              if (!this.altTagSearchMap.has(lowerAlt)) this.altTagSearchMap.set(lowerAlt, []);
+              if (!this.altTagSearchMap.has(lowerAlt))
+                this.altTagSearchMap.set(lowerAlt, []);
               this.altTagSearchMap.get(lowerAlt).push(currentIndex);
             });
           }
@@ -389,7 +443,10 @@ class TagsManager {
           }
 
           if (targetCat?.tags.has(targetTagName)) {
-            tag.resolvedRequiredTags.push({ category: targetCat, tagName: targetTagName });
+            tag.resolvedRequiredTags.push({
+              category: targetCat,
+              tagName: targetTagName,
+            });
           }
         });
       });
@@ -402,7 +459,11 @@ class TagsManager {
 
     if (this.tagsData?.webLinks?.length > 0) {
       const urlParams = new URLSearchParams(window.location.search);
-      const allowedButtons = urlParams.get("linkbutton")?.split(",").map(s => s.trim()) ?? [];
+      const allowedButtons =
+        urlParams
+          .get("linkbutton")
+          ?.split(",")
+          .map((s) => s.trim()) ?? [];
       let addedLinksCount = 0;
 
       this.tagsData.webLinks.forEach((link) => {
@@ -410,7 +471,9 @@ class TagsManager {
           const target = link.target || "_blank";
           const linkAttrs = { href: link.url, target };
           if (target === "_blank") linkAttrs["rel"] = "noopener noreferrer";
-          webLinksNav.appendChild(this.el("a", "web-link-item", link.name, linkAttrs));
+          webLinksNav.appendChild(
+            this.el("a", "web-link-item", link.name, linkAttrs),
+          );
           addedLinksCount++;
         }
       });
@@ -435,9 +498,12 @@ class TagsManager {
     } else if (action === "set") {
       const currentData = this.getCacheMetadata(fileName);
       const newData = {
-        cacheMaxAgeHours: data.cacheMaxAgeHours ?? currentData.cacheMaxAgeHours ?? 24,
-        lastSuccessfulFetchTime: data.newContent ? Date.now() : (currentData.lastSuccessfulFetchTime ?? 0),
-        scriptVersion: APP_VERSION
+        cacheMaxAgeHours:
+          data.cacheMaxAgeHours ?? currentData.cacheMaxAgeHours ?? 24,
+        lastSuccessfulFetchTime: data.newContent
+          ? Date.now()
+          : (currentData.lastSuccessfulFetchTime ?? 0),
+        scriptVersion: APP_VERSION,
       };
       localStorage.setItem(key, JSON.stringify(newData));
       return newData;
@@ -448,7 +514,7 @@ class TagsManager {
   async startLoadingData() {
     const getParams = () => {
       const p = new URLSearchParams(window.location.search).get("conf");
-      return p && !p.endsWith(".json") ? `${p}.json` : (p || "tags.json");
+      return p && !p.endsWith(".json") ? `${p}.json` : p || "tags.json";
     };
 
     this.configFileName = getParams();
@@ -457,7 +523,10 @@ class TagsManager {
       const r = await fetch(f, { cache: fetchMode });
       if (!r.ok) throw new Error(`Файл не найден (статус: ${r.status})`);
       const json = await r.json();
-      this.getCacheMetadata(f, "set", { cacheMaxAgeHours: json.cacheMaxAgeHours, newContent: true });
+      this.getCacheMetadata(f, "set", {
+        cacheMaxAgeHours: json.cacheMaxAgeHours,
+        newContent: true,
+      });
       return json;
     };
 
@@ -465,9 +534,11 @@ class TagsManager {
     const lastFetchTime = cacheMeta.lastSuccessfulFetchTime || 0;
     const maxAgeMs = (cacheMeta.cacheMaxAgeHours || 24) * 60 * 60 * 1000;
 
-    const isCacheExpired = lastFetchTime === 0 || Date.now() - lastFetchTime > maxAgeMs;
+    const isCacheExpired =
+      lastFetchTime === 0 || Date.now() - lastFetchTime > maxAgeMs;
     const isVersionChanged = cacheMeta.scriptVersion !== APP_VERSION;
-    const fetchMode = (isCacheExpired || isVersionChanged) ? "no-cache" : "default";
+    const fetchMode =
+      isCacheExpired || isVersionChanged ? "no-cache" : "default";
 
     try {
       return await fetchFile(this.configFileName, fetchMode);
@@ -485,12 +556,17 @@ class TagsManager {
 
   saveStateToStorage() {
     if (this.configFileName) {
-      localStorage.setItem(`tagsManager_autosave:${this.configFileName}`, this.dom.input.value);
+      localStorage.setItem(
+        `tagsManager_autosave:${this.configFileName}`,
+        this.dom.input.value,
+      );
     }
   }
 
   loadStateFromStorage() {
-    return this.configFileName ? localStorage.getItem(`tagsManager_autosave:${this.configFileName}`) : null;
+    return this.configFileName
+      ? localStorage.getItem(`tagsManager_autosave:${this.configFileName}`)
+      : null;
   }
 
   // ==========================================
@@ -506,11 +582,19 @@ class TagsManager {
     });
 
     const processedStr = str.trim() + " ";
-    const rawTags = processedStr.split(this.tagsData.separator).map((t) => t.trim()).filter(Boolean);
+    const rawTags = processedStr
+      .split(this.tagsData.separator)
+      .map((t) => t.trim())
+      .filter(Boolean);
     const recognizedIndices = new Set();
 
     const findTagInMaps = (term) => {
-      return this.tagIndexMap.get(term) || this.knownAsMap.get(term) || this.altTagSearchMap.get(term) || null;
+      return (
+        this.tagIndexMap.get(term) ||
+        this.knownAsMap.get(term) ||
+        this.altTagSearchMap.get(term) ||
+        null
+      );
     };
 
     rawTags.forEach((tNameOriginal, tagIndex) => {
@@ -527,7 +611,8 @@ class TagsManager {
             cat.selectedTags.add(main);
           } else {
             cat.selectedTags.add(main);
-            if (cat.type === "ordered" && !cat.orderedTags.includes(main)) cat.orderedTags.push(main);
+            if (cat.type === "ordered" && !cat.orderedTags.includes(main))
+              cat.orderedTags.push(main);
           }
           cat.selectedVariants.set(main, info.name);
           this.selectedTags.set(main, info.category);
@@ -536,8 +621,12 @@ class TagsManager {
       }
     });
 
+    this.categories.forEach((cat) => this.sortOrderedCategory(cat));
+
     this.unrecognizedTags = rawTags.filter(
-      (tagStr, index) => !recognizedIndices.has(index) && !this.unrecognizedIgnoreSet.has(tagStr.toLowerCase())
+      (tagStr, index) =>
+        !recognizedIndices.has(index) &&
+        !this.unrecognizedIgnoreSet.has(tagStr.toLowerCase()),
     );
 
     if (updateInputValue) this.dom.input.value = this.generateOutputString();
@@ -608,7 +697,7 @@ class TagsManager {
         cat.orderedTags.push(main);
         setSel(tagName);
       }
-      cat.orderedTags.sort((a, b) => cat.tags.get(b).sortWeight - cat.tags.get(a).sortWeight);
+      this.sortOrderedCategory(cat);
     } else {
       const curVar = cat.selectedVariants.get(main);
       if (cat.selectedTags.has(main) && curVar === tagName) delSel();
@@ -621,7 +710,10 @@ class TagsManager {
 
     if (this.hasCharacterLimit) {
       const newStr = this.generateOutputString();
-      if (this.dom.limitBox.checked && newStr.length > this.tagsData.characterLimit) {
+      if (
+        this.dom.limitBox.checked &&
+        newStr.length > this.tagsData.characterLimit
+      ) {
         cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
         cat.selectedTags = snapshot.selectedTags;
         cat.orderedTags = snapshot.orderedTags;
@@ -651,23 +743,35 @@ class TagsManager {
 
       if (category.type === "ordered") {
         category.orderedTags.push(targetMain);
-        category.orderedTags.sort((a, b) => category.tags.get(b).sortWeight - category.tags.get(a).sortWeight);
+        this.sortOrderedCategory(category);
       }
       this.updateCategoryDOM(category);
     });
   }
 
+  sortOrderedCategory(cat) {
+    if (cat.type === "ordered") {
+      cat.orderedTags.sort(
+        (a, b) => cat.tags.get(b).sortWeight - cat.tags.get(a).sortWeight,
+      );
+    }
+  }
+
   groupTags(catData) {
     const subs = new Map();
     const processed = new Set();
-    catData.tags.forEach((tag) => tag.domButtons = []);
+    catData.tags.forEach((tag) => (tag.domButtons = []));
 
     catData.variantGroups.forEach((vars, main) => {
       const tag = catData.tags.get(vars[0]);
       if (!tag) return;
       const s = tag.subgroup || "";
       if (!subs.has(s)) subs.set(s, []);
-      subs.get(s).push({ type: "variant", variants: vars.map((v) => catData.tags.get(v)), desc: tag.description });
+      subs.get(s).push({
+        type: "variant",
+        variants: vars.map((v) => catData.tags.get(v)),
+        desc: tag.description,
+      });
       processed.add(main);
     });
 
@@ -700,7 +804,8 @@ class TagsManager {
 
   render() {
     this.imageTagCount = 0;
-    const { container, navList, refSection, refContent, refToggleBtn } = this.dom;
+    const { container, navList, refSection, refContent, refToggleBtn } =
+      this.dom;
 
     container.innerHTML = "";
     navList.innerHTML = "";
@@ -727,12 +832,20 @@ class TagsManager {
       const left = this.el("div", "category-title-left");
       left.append(this.el("div", "category-title", catName));
       if (catData.description) {
-        left.append(this.el("button", "category-help-button", "?", { "data-tooltip": catData.description }));
+        left.append(
+          this.el("button", "category-help-button", "?", {
+            "data-tooltip": catData.description,
+          }),
+        );
       }
 
       let catRefContent = null;
       if (catData.reference) {
-        const refButton = this.el("button", "util-tag-base pin-header-button", "Справка");
+        const refButton = this.el(
+          "button",
+          "util-tag-base pin-header-button",
+          "Справка",
+        );
         left.append(refButton);
         catRefContent = this.el("div", "reference-content util-hidden", "");
         catRefContent.innerHTML = catData.reference;
@@ -747,12 +860,16 @@ class TagsManager {
       const right = this.el("div", "category-title-right");
       if (catData.label?.text) {
         const labelEl = this.el("div", "category-label", catData.label.text);
-        if (catData.label.light) labelEl.style.setProperty("--label-light-color", catData.label.light);
-        if (catData.label.dark) labelEl.style.setProperty("--label-dark-color", catData.label.dark);
+        if (catData.label.light)
+          labelEl.style.setProperty("--label-light-color", catData.label.light);
+        if (catData.label.dark)
+          labelEl.style.setProperty("--label-dark-color", catData.label.dark);
         right.append(labelEl);
       }
 
-      const scrollTop = this.el("button", "category-scroll-top", "˄", { "aria-label": "Наверх" });
+      const scrollTop = this.el("button", "category-scroll-top", "˄", {
+        "aria-label": "Наверх",
+      });
       scrollTop.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
       right.append(scrollTop);
       titleRow.append(left, right);
@@ -766,7 +883,8 @@ class TagsManager {
 
       this.groupTags(catData).forEach((tags, subName) => {
         const subDiv = this.el("div", "subgroup");
-        if (subName && !subName.startsWith("!")) subDiv.append(this.el("div", "subgroup-title", subName));
+        if (subName && !subName.startsWith("!"))
+          subDiv.append(this.el("div", "subgroup-title", subName));
 
         const groupDiv = this.el("div", "tags-group");
         tags.forEach((item) => {
@@ -775,7 +893,8 @@ class TagsManager {
             const vBtns = this.el("div", "variant-buttons");
             item.variants.forEach((t) => vBtns.append(this.createBtn(t)));
             vGroup.append(vBtns);
-            if (item.desc) vGroup.append(this.el("div", "variant-description", item.desc));
+            if (item.desc)
+              vGroup.append(this.el("div", "variant-description", item.desc));
             groupDiv.append(vGroup);
           } else {
             groupDiv.append(this.createBtn(item.tag));
@@ -801,7 +920,8 @@ class TagsManager {
 
   createBtn(tag) {
     let cssClass = `tag-button util-tag-base`;
-    if (tag.displayHighlightIndex !== -1) cssClass += ` highlight-${tag.displayHighlightIndex}`;
+    if (tag.displayHighlightIndex !== -1)
+      cssClass += ` highlight-${tag.displayHighlightIndex}`;
     if (tag.image) cssClass += " has-image";
 
     const btn = this.el("button", cssClass, "", {
@@ -831,7 +951,9 @@ class TagsManager {
 
   generateHighlightCSS() {
     if (!Array.isArray(this.tagsData.highlightedTags)) return;
-    let lightVars = '', darkVars = '', classes = '';
+    let lightVars = "",
+      darkVars = "",
+      classes = "";
 
     this.tagsData.highlightedTags.forEach((h, index) => {
       const cls = `highlight-${index}`;
@@ -845,8 +967,10 @@ class TagsManager {
       const themeFallback = h.dark ?? h.light;
       if (themeFallback) {
         if (themeFallback.bg) darkVars += `--${cls}-bg: ${themeFallback.bg}; `;
-        if (themeFallback.border) darkVars += `--${cls}-border: ${themeFallback.border}; `;
-        if (themeFallback.text) darkVars += `--${cls}-text: ${themeFallback.text}; `;
+        if (themeFallback.border)
+          darkVars += `--${cls}-border: ${themeFallback.border}; `;
+        if (themeFallback.text)
+          darkVars += `--${cls}-text: ${themeFallback.text}; `;
       }
 
       classes += `
@@ -856,7 +980,7 @@ class TagsManager {
       `;
     });
 
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `:root { ${lightVars} } [data-theme="dark"] { ${darkVars} } @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${darkVars} } } ${classes}`;
     document.head.appendChild(style);
   }
@@ -867,7 +991,9 @@ class TagsManager {
   }
 
   updateFullState() {
-    this.categories.forEach((cat) => this.updateButtonsInContainer(cat.dom, cat));
+    this.categories.forEach((cat) =>
+      this.updateButtonsInContainer(cat.dom, cat),
+    );
     this.refreshGlobalWarning();
     this.updateDisplayToggleVisibility();
   }
@@ -876,7 +1002,9 @@ class TagsManager {
     cat.tags.forEach((tag) => {
       if (tag.domButtons?.length > 0) {
         tag.domButtons.forEach((btn) => {
-          const sel = cat.selectedTags.has(tag.mainName) && cat.selectedVariants.get(tag.mainName) === tag.name;
+          const sel =
+            cat.selectedTags.has(tag.mainName) &&
+            cat.selectedVariants.get(tag.mainName) === tag.name;
           btn.classList.toggle("selected", sel);
 
           if (cat.type === "ordered" && sel) {
@@ -898,14 +1026,18 @@ class TagsManager {
     let txtHtml = "";
     const reqs = [cat.requirement].flat().filter(Boolean);
 
-    if (reqs.some(r => r !== "atLeastOne")) {
-      const requiredHighlights = reqs.filter(r => r !== "atLeastOne");
+    if (reqs.some((r) => r !== "atLeastOne")) {
+      const requiredHighlights = reqs.filter((r) => r !== "atLeastOne");
       const missingHighlights = [];
 
-      requiredHighlights.forEach(reqHighlight => {
-        const hasTagWithHighlight = [...cat.tags.values()].some(tag => tag.highlights.includes(reqHighlight));
+      requiredHighlights.forEach((reqHighlight) => {
+        const hasTagWithHighlight = [...cat.tags.values()].some((tag) =>
+          tag.highlights.includes(reqHighlight),
+        );
         if (hasTagWithHighlight) {
-          const isSatisfied = [...cat.selectedTags].some(mainName => cat.tags.get(mainName)?.highlights.includes(reqHighlight));
+          const isSatisfied = [...cat.selectedTags].some((mainName) =>
+            cat.tags.get(mainName)?.highlights.includes(reqHighlight),
+          );
           if (!isSatisfied) missingHighlights.push(reqHighlight);
         }
       });
@@ -915,17 +1047,25 @@ class TagsManager {
         if (cat.overrideRequirementText) {
           txtHtml = cat.overrideRequirementText;
         } else {
-          const styledNames = missingHighlights.map(name => {
-            const idx = (this.tagsData.highlightedTags || []).findIndex(h => h.name === name);
-            return idx !== -1 ? `<span class="highlight-${idx}-text">${name}</span>` : name;
+          const styledNames = missingHighlights.map((name) => {
+            const idx = (this.tagsData.highlightedTags || []).findIndex(
+              (h) => h.name === name,
+            );
+            return idx !== -1
+              ? `<span class="highlight-${idx}-text">${name}</span>`
+              : name;
           });
-          const namesStr = styledNames.length > 1 ? `${styledNames.slice(0, -1).join(", ")} и ${styledNames.slice(-1)}` : styledNames[0];
+          const namesStr =
+            styledNames.length > 1
+              ? `${styledNames.slice(0, -1).join(", ")} и ${styledNames.slice(-1)}`
+              : styledNames[0];
           txtHtml = `Необходимо выбрать хотя бы один тег из ${namesStr}`;
         }
       }
     } else if (reqs.includes("atLeastOne")) {
       showWarn = cat.selectedTags.size === 0;
-      txtHtml = cat.overrideRequirementText || "Необходимо выбрать хотя бы один тег";
+      txtHtml =
+        cat.overrideRequirementText || "Необходимо выбрать хотя бы один тег";
     }
 
     if (warn.innerHTML !== txtHtml) warn.innerHTML = txtHtml;
@@ -940,11 +1080,15 @@ class TagsManager {
   // ==========================================
 
   updateUI(updateInputFromState = true) {
-    if (updateInputFromState) this.dom.input.value = this.generateOutputString();
+    if (updateInputFromState)
+      this.dom.input.value = this.generateOutputString();
     this.updateLimitDisplay(this.dom.input.value.length);
 
     this.dom.unrecWarn.textContent = `Не распознано: ${this.unrecognizedTags.join(", ")}`;
-    this.dom.unrecWarn.classList.toggle("util-hidden", this.unrecognizedTags.length === 0);
+    this.dom.unrecWarn.classList.toggle(
+      "util-hidden",
+      this.unrecognizedTags.length === 0,
+    );
 
     this.updateFullState();
     this.updateAlt();
@@ -976,21 +1120,24 @@ class TagsManager {
 
     this.processSelectedTags((_, tagObj) => {
       if (tagObj.alternative) {
-        const norm = tagObj.alternative.trim().toLowerCase().replace(/\s+/g, " ");
+        const norm = tagObj.alternative
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, " ");
         alts.push(tagObj.alternative);
         if (seen.has(norm)) hasDuplicates = true;
         seen.add(norm);
       }
     });
 
-    const dupControls = this.dom.dupBox.closest('.alternative-controls');
-    dupControls.classList.toggle('util-hidden', !hasDuplicates);
+    const dupControls = this.dom.dupBox.closest(".alternative-controls");
+    dupControls.classList.toggle("util-hidden", !hasDuplicates);
     if (!hasDuplicates) this.dom.dupBox.checked = false;
 
     const filteredAlts = [];
     if (this.dom.dupBox.checked) {
       seen.clear();
-      alts.forEach(alt => {
+      alts.forEach((alt) => {
         const norm = alt.trim().toLowerCase().replace(/\s+/g, " ");
         if (!seen.has(norm)) {
           filteredAlts.push(alt);
@@ -1008,7 +1155,10 @@ class TagsManager {
     if (this.dom.altOut.value !== s) this.dom.altOut.value = s;
 
     this.dom.altName.textContent = this.tagsData.alternativeName || "";
-    this.dom.altName.classList.toggle('util-hidden', !(this.tagsData.alternativeName && shouldBeVisible));
+    this.dom.altName.classList.toggle(
+      "util-hidden",
+      !(this.tagsData.alternativeName && shouldBeVisible),
+    );
 
     if (shouldBeVisible && this.isHeaderPinned && !this.scrollTicking) {
       window.requestAnimationFrame(() => this.updateHeaderOffset());
@@ -1021,7 +1171,8 @@ class TagsManager {
       return;
     }
     const target = `${this.dom.header.offsetHeight + 55}px`;
-    if (this.dom.main.style.paddingTop !== target) this.dom.main.style.paddingTop = target;
+    if (this.dom.main.style.paddingTop !== target)
+      this.dom.main.style.paddingTop = target;
   }
 
   updatePinState() {
@@ -1036,47 +1187,62 @@ class TagsManager {
   }
 
   updateNavVis() {
-    const need = this.dom.main.scrollHeight > window.innerHeight || this.isHeaderPinned;
+    const need =
+      this.dom.main.scrollHeight > window.innerHeight || this.isHeaderPinned;
     this.dom.nav.classList.toggle("util-hidden", !need);
   }
 
   updateScrollHints() {
-    const vis = window.innerWidth > this.dom.main.offsetWidth + 200 && window.scrollY > this.getScrollThreshold();
+    const vis =
+      window.innerWidth > this.dom.main.offsetWidth + 200 &&
+      window.scrollY > this.getScrollThreshold();
     this.dom.scrollHints.forEach((h) => h.classList.toggle("visible", vis));
   }
 
   refreshGlobalWarning() {
-    const hasAnyError = [...this.categories.values()].some((cat) => cat.hasError);
+    const hasAnyError = [...this.categories.values()].some(
+      (cat) => cat.hasError,
+    );
     const isHidden = this.dom.globalCatWarn.classList.contains("util-hidden");
     this.dom.globalCatWarn.classList.toggle("util-hidden", !hasAnyError);
-    if (isHidden !== !hasAnyError && this.isHeaderPinned) this.updateHeaderOffset();
+    if (isHidden !== !hasAnyError && this.isHeaderPinned)
+      this.updateHeaderOffset();
   }
 
   toggleTheme() {
     const states = ["auto", "dark", "light"];
-    this.themeState = states[(states.indexOf(this.themeState) + 1) % states.length];
+    this.themeState =
+      states[(states.indexOf(this.themeState) + 1) % states.length];
     this.applyTheme();
     localStorage.setItem("theme", this.themeState);
   }
 
   applyTheme() {
     const html = document.documentElement;
-    this.themeState === "auto" ? html.removeAttribute("data-theme") : html.setAttribute("data-theme", this.themeState);
+    this.themeState === "auto"
+      ? html.removeAttribute("data-theme")
+      : html.setAttribute("data-theme", this.themeState);
     this.dom.themeIcon.textContent = this.themeIcons[this.themeState];
     this.dom.themeText.textContent = this.themeTexts[this.themeState];
     this.dom.themeToggleBtn.title = `Тема: ${this.themeTexts[this.themeState]}`;
   }
 
   updateDisplayToggleVisibility() {
-    this.dom.displayModeBtn.classList.toggle("util-hidden", this.isImageOnly || this.imageTagCount === 0);
-    if (!this.dom.displayModeBtn.classList.contains("util-hidden")) this.updateDisplayToggleIcon();
+    this.dom.displayModeBtn.classList.toggle(
+      "util-hidden",
+      this.isImageOnly || this.imageTagCount === 0,
+    );
+    if (!this.dom.displayModeBtn.classList.contains("util-hidden"))
+      this.updateDisplayToggleIcon();
   }
 
   updateDisplayToggleIcon() {
     const showingText = this.displayMode === "text";
     this.dom.displayIcon.textContent = showingText ? "🔤" : "🖼️";
     this.dom.displayText.textContent = showingText ? "Текст" : "Иконки";
-    this.dom.displayModeBtn.title = showingText ? "Показать изображения" : "Показать текст";
+    this.dom.displayModeBtn.title = showingText
+      ? "Показать изображения"
+      : "Показать текст";
   }
 
   toggleTagDisplayMode() {
@@ -1084,13 +1250,19 @@ class TagsManager {
     const findFirstVisibleButton = () => {
       for (const btn of this.dom.container.querySelectorAll(".tag-button")) {
         const rect = btn.getBoundingClientRect();
-        if (rect.bottom > headerHeight && rect.top < window.innerHeight) return btn;
+        if (rect.bottom > headerHeight && rect.top < window.innerHeight)
+          return btn;
       }
       return null;
     };
 
     const firstVisibleButton = findFirstVisibleButton();
-    const desiredOffset = firstVisibleButton ? Math.max(headerHeight + 8, firstVisibleButton.getBoundingClientRect().top) : headerHeight + 8;
+    const desiredOffset = firstVisibleButton
+      ? Math.max(
+          headerHeight + 8,
+          firstVisibleButton.getBoundingClientRect().top,
+        )
+      : headerHeight + 8;
 
     this.displayMode = this.displayMode === "text" ? "image" : "text";
     this.updateDisplayToggleIcon();
@@ -1099,8 +1271,12 @@ class TagsManager {
       cat.tags.forEach((tag) => {
         if (tag.image && tag.domButtons) {
           tag.domButtons.forEach((btn) => {
-            btn.querySelector(".tag-text")?.classList.toggle("util-hidden", this.displayMode !== "text");
-            btn.querySelector(".tag-image")?.classList.toggle("util-hidden", this.displayMode === "text");
+            btn
+              .querySelector(".tag-text")
+              ?.classList.toggle("util-hidden", this.displayMode !== "text");
+            btn
+              .querySelector(".tag-image")
+              ?.classList.toggle("util-hidden", this.displayMode === "text");
           });
         }
       });
@@ -1108,7 +1284,12 @@ class TagsManager {
 
     requestAnimationFrame(() => {
       if (firstVisibleButton?.isConnected) {
-        const targetScroll = Math.max(0, firstVisibleButton.getBoundingClientRect().top + window.scrollY - desiredOffset);
+        const targetScroll = Math.max(
+          0,
+          firstVisibleButton.getBoundingClientRect().top +
+            window.scrollY -
+            desiredOffset,
+        );
         window.scrollTo({ top: targetScroll, behavior: "auto" });
       }
       this.updateNavVis();
@@ -1121,7 +1302,10 @@ class TagsManager {
     this.isSearchActive = !this.isSearchActive;
     this.dom.searchToggleBtn.classList.toggle("active", this.isSearchActive);
     this.dom.mainInputWrap.classList.toggle("util-hidden", this.isSearchActive);
-    this.dom.searchInputWrap.classList.toggle("util-hidden", !this.isSearchActive);
+    this.dom.searchInputWrap.classList.toggle(
+      "util-hidden",
+      !this.isSearchActive,
+    );
 
     if (!this.isSearchActive) {
       this.clearSearch();
@@ -1148,24 +1332,41 @@ class TagsManager {
 
     this.categories.forEach((cat) => {
       cat.tags.forEach((tag) => {
-        if ([tag.name].flat().some(name => name.toLowerCase().includes(query)) || tag.description?.toLowerCase().includes(query)) {
-          if (tag.domButtons?.length > 0) this.searchResults.push(tag.domButtons[0]);
+        if (
+          [tag.name]
+            .flat()
+            .some((name) => name.toLowerCase().includes(query)) ||
+          tag.description?.toLowerCase().includes(query)
+        ) {
+          if (tag.domButtons?.length > 0)
+            this.searchResults.push(tag.domButtons[0]);
         }
       });
     });
 
-    this.dom.searchInput.classList.toggle("search-error-pulse", this.searchResults.length === 0);
+    this.dom.searchInput.classList.toggle(
+      "search-error-pulse",
+      this.searchResults.length === 0,
+    );
     this.updateSearchHighlight();
   }
 
   navigateSearch(direction) {
     if (this.searchResults.length === 0) return;
-    this.currentSearchIndex = Math.max(0, Math.min(this.currentSearchIndex + direction, this.searchResults.length - 1));
+    this.currentSearchIndex = Math.max(
+      0,
+      Math.min(
+        this.currentSearchIndex + direction,
+        this.searchResults.length - 1,
+      ),
+    );
     this.updateSearchHighlight();
   }
 
   updateSearchHighlight() {
-    document.querySelectorAll(".search-match-active").forEach(btn => btn.classList.remove("search-match-active"));
+    document
+      .querySelectorAll(".search-match-active")
+      .forEach((btn) => btn.classList.remove("search-match-active"));
 
     const total = this.searchResults.length;
     if (total === 0) {
@@ -1198,7 +1399,9 @@ class TagsManager {
 
   scrollToElement(element, customOffset = 0) {
     if (!element) return;
-    const offset = this.isHeaderPinned ? (this.dom.header.offsetHeight + customOffset) : 20;
+    const offset = this.isHeaderPinned
+      ? this.dom.header.offsetHeight + customOffset
+      : 20;
     const top = element.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: "smooth" });
   }
@@ -1216,15 +1419,21 @@ class TagsManager {
   error(detailText, title = "Ошибка загрузки конфигурации") {
     this.dom.loading.classList.add("util-hidden");
     this.dom.errTitle.textContent = title;
-    this.dom.errDetail.innerHTML = detailText.replace(/\*\*(.*?)\*\*/g, "<code>$1</code>");
+    this.dom.errDetail.innerHTML = detailText.replace(
+      /\*\*(.*?)\*\*/g,
+      "<code>$1</code>",
+    );
     this.dom.error.classList.remove("util-hidden");
     this.dom.app.classList.add("util-hidden");
   }
 
   handleLoadError(e) {
-    const fileName = new URLSearchParams(window.location.search).get("conf") || "tags.json";
+    const fileName =
+      new URLSearchParams(window.location.search).get("conf") || "tags.json";
     const isJsonError = e.message.includes("JSON");
-    const errorTitle = isJsonError ? "Ошибка в формате JSON" : "Файл конфигурации не найден";
+    const errorTitle = isJsonError
+      ? "Ошибка в формате JSON"
+      : "Файл конфигурации не найден";
     const errorText = isJsonError
       ? `Файл **${fileName}** содержит ошибку формата: ${e.message}`
       : `Файл **${fileName}** не найден или недоступен.`;
