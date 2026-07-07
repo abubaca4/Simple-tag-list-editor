@@ -33,6 +33,7 @@ class TagsManager {
 
     // Флаг для проверки наличия лимита
     this.hasCharacterLimit = false;
+    this.externalCapacity = null;
 
     // Переменные для поиска
     this.isSearchActive = false;
@@ -52,6 +53,21 @@ class TagsManager {
       this.cacheDOM();
       this.setupStaticEvents();
 
+      if (
+        window.pl_externalCapacity !== undefined &&
+        window.pl_externalCapacity !== null
+      ) {
+        this.externalCapacity = window.pl_externalCapacity;
+      }
+
+      window.addEventListener("PL_LimitUpdate", (e) => {
+        this.externalCapacity = e.detail.capacity;
+        if (!this.hasCharacterLimit) this.dom.limitBox.checked = true;
+        this.hasCharacterLimit = true;
+        this.dom.limitBox.parentElement.classList.remove("util-hidden");
+        this.updateUI(false);
+      });
+
       try {
         this.tagsData = await this.dataPromise;
 
@@ -63,7 +79,9 @@ class TagsManager {
 
         this.generateHighlightCSS();
 
-        this.hasCharacterLimit = (this.tagsData?.characterLimit ?? 0) > 0;
+        this.hasCharacterLimit =
+          this.externalCapacity !== null ||
+          (this.tagsData?.characterLimit ?? 0) > 0;
 
         const mode = (this.tagsData.imageMode ?? "textFirst").toString();
         this.displayMode = mode === "textFirst" ? "text" : "image";
@@ -710,10 +728,14 @@ class TagsManager {
 
     if (this.hasCharacterLimit) {
       const newStr = this.generateOutputString();
-      if (
-        this.dom.limitBox.checked &&
-        newStr.length > this.tagsData.characterLimit
-      ) {
+      const actualLen = window.pl_cpLen
+        ? window.pl_cpLen(newStr)
+        : newStr.length;
+      const limit =
+        this.externalCapacity !== null
+          ? this.externalCapacity
+          : this.tagsData.characterLimit;
+      if (this.dom.limitBox.checked && actualLen > limit) {
         cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
         cat.selectedTags = snapshot.selectedTags;
         cat.orderedTags = snapshot.orderedTags;
@@ -1082,7 +1104,7 @@ class TagsManager {
   updateUI(updateInputFromState = true) {
     if (updateInputFromState)
       this.dom.input.value = this.generateOutputString();
-    this.updateLimitDisplay(this.dom.input.value.length);
+    this.updateLimitDisplay(this.dom.input.value);
 
     this.dom.unrecWarn.textContent = `Не распознано: ${this.unrecognizedTags.join(", ")}`;
     this.dom.unrecWarn.classList.toggle(
@@ -1094,11 +1116,15 @@ class TagsManager {
     this.updateAlt();
   }
 
-  updateLimitDisplay(len) {
+  updateLimitDisplay(str) {
     if (!this.hasCharacterLimit) return;
-    const limit = this.tagsData.characterLimit;
-    const isExceeded = this.dom.limitBox.checked && len > limit;
-    this.dom.limitDisp.textContent = `${len}/${limit}`;
+    const actualLen = window.pl_cpLen ? window.pl_cpLen(str) : str.length;
+    const limit =
+      this.externalCapacity !== null
+        ? this.externalCapacity
+        : this.tagsData.characterLimit;
+    const isExceeded = this.dom.limitBox.checked && actualLen > limit;
+    this.dom.limitDisp.textContent = `${actualLen}/${limit}`;
     this.dom.limitDisp.classList.toggle("exceeded", !!isExceeded);
   }
 
