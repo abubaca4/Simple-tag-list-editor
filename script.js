@@ -134,7 +134,7 @@ class TagsManager {
         !this.hasCharacterLimit,
       );
       if (this.hasCharacterLimit) {
-        this.updateLimitDisplay(this.dom.input.value.length);
+        this.updateLimitDisplay(this.dom.input.value);
       }
 
       this.updateFullState();
@@ -767,7 +767,7 @@ class TagsManager {
     const newStr = this.generateOutputString();
     this.dom.input.value = newStr;
     this.saveStateToStorage();
-    this.updateLimitDisplay(newStr.length);
+    this.updateLimitDisplay(newStr);
     this.updateCategoryDOM(cat);
     this.updateAlt();
   }
@@ -1153,7 +1153,7 @@ class TagsManager {
     this.dom.limitDisp.textContent = "ЛИМИТ!";
     setTimeout(() => {
       this.dom.limitDisp.textContent = originalText;
-      this.updateLimitDisplay(this.dom.input.value.length);
+      this.updateLimitDisplay(this.dom.input.value);
     }, 800);
   }
 
