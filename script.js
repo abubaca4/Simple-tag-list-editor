@@ -59,12 +59,15 @@ class TagsManager {
           window.pl_externalCapacity !== null
         ) {
           this.externalCapacity = window.pl_externalCapacity;
-          this.hasCharacterLimit = true;
-          if (this.dom.limitBox) {
-            this.dom.limitBox.parentElement.classList.remove("util-hidden");
-            this.dom.limitBox.checked = true;
+
+          if (this.tagsData) {
+            this.hasCharacterLimit = (this.tagsData?.characterLimit ?? 0) > 0;
+            if (this.hasCharacterLimit && this.dom.limitBox) {
+              this.dom.limitBox.parentElement.classList.remove("util-hidden");
+              this.dom.limitBox.checked = true;
+            }
+            this.updateUI(false);
           }
-          this.updateUI(false);
         }
       };
 
@@ -76,12 +79,14 @@ class TagsManager {
 
       window.addEventListener("PL_LimitUpdate", (e) => {
         this.externalCapacity = e.detail.capacity;
-        this.hasCharacterLimit = this.externalCapacity !== null;
-        if (this.dom.limitBox) {
-          this.dom.limitBox.parentElement.classList.remove("util-hidden");
-          this.dom.limitBox.checked = true;
+        if (this.tagsData) {
+          this.hasCharacterLimit = (this.tagsData?.characterLimit ?? 0) > 0;
+          if (this.hasCharacterLimit && this.dom.limitBox) {
+            this.dom.limitBox.parentElement.classList.remove("util-hidden");
+            this.dom.limitBox.checked = true;
+          }
+          this.updateUI(false);
         }
-        this.updateUI(false);
       });
 
       try {
@@ -95,9 +100,7 @@ class TagsManager {
 
         this.generateHighlightCSS();
 
-        this.hasCharacterLimit =
-          this.externalCapacity !== null ||
-          (this.tagsData?.characterLimit ?? 0) > 0;
+        this.hasCharacterLimit = (this.tagsData?.characterLimit ?? 0) > 0;
 
         const mode = (this.tagsData.imageMode ?? "textFirst").toString();
         this.displayMode = mode === "textFirst" ? "text" : "image";
