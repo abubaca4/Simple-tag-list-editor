@@ -53,18 +53,34 @@ class TagsManager {
       this.cacheDOM();
       this.setupStaticEvents();
 
-      if (
-        window.pl_externalCapacity !== undefined &&
-        window.pl_externalCapacity !== null
-      ) {
-        this.externalCapacity = window.pl_externalCapacity;
-      }
+      const checkExternalCapacity = () => {
+        if (
+          window.pl_externalCapacity !== undefined &&
+          window.pl_externalCapacity !== null
+        ) {
+          this.externalCapacity = window.pl_externalCapacity;
+          this.hasCharacterLimit = true;
+          if (this.dom.limitBox) {
+            this.dom.limitBox.parentElement.classList.remove("util-hidden");
+            this.dom.limitBox.checked = true;
+          }
+          this.updateUI(false);
+        }
+      };
+
+      checkExternalCapacity();
+
+      window.addEventListener("PL_BridgeReady", () => {
+        checkExternalCapacity();
+      });
 
       window.addEventListener("PL_LimitUpdate", (e) => {
         this.externalCapacity = e.detail.capacity;
-        if (!this.hasCharacterLimit) this.dom.limitBox.checked = true;
-        this.hasCharacterLimit = true;
-        this.dom.limitBox.parentElement.classList.remove("util-hidden");
+        this.hasCharacterLimit = this.externalCapacity !== null;
+        if (this.dom.limitBox) {
+          this.dom.limitBox.parentElement.classList.remove("util-hidden");
+          this.dom.limitBox.checked = true;
+        }
         this.updateUI(false);
       });
 
@@ -726,16 +742,18 @@ class TagsManager {
       this.processRequiredTag(tag.resolvedRequiredTags);
     }
 
-    if (this.hasCharacterLimit) {
+    if (
+      this.hasCharacterLimit ||
+      (this.tagsData && this.tagsData.characterLimit)
+    ) {
       const newStr = this.generateOutputString();
-      const actualLen = window.pl_cpLen
-        ? window.pl_cpLen(newStr)
-        : newStr.length;
+      const actualLen = this.getStringLength(newStr);
       const limit =
         this.externalCapacity !== null
           ? this.externalCapacity
-          : this.tagsData.characterLimit;
-      if (this.dom.limitBox.checked && actualLen > limit) {
+          : (this.tagsData?.characterLimit ?? 0);
+
+      if (this.dom.limitBox && this.dom.limitBox.checked && actualLen > limit) {
         cat.selectedTags.forEach((m) => this.selectedTags.delete(m));
         cat.selectedTags = snapshot.selectedTags;
         cat.orderedTags = snapshot.orderedTags;
@@ -1118,7 +1136,7 @@ class TagsManager {
 
   updateLimitDisplay(str) {
     if (!this.hasCharacterLimit) return;
-    const actualLen = window.pl_cpLen ? window.pl_cpLen(str) : str.length;
+    const actualLen = this.getStringLength(str);
     const limit =
       this.externalCapacity !== null
         ? this.externalCapacity
@@ -1434,6 +1452,18 @@ class TagsManager {
 
   getScrollThreshold() {
     return Math.max(300, window.innerHeight * 0.3);
+  }
+
+  getStringLength(str) {
+    const safeStr = String(str || "");
+    if (window.pl_cpLen && typeof window.pl_cpLen === "function") {
+      try {
+        return window.pl_cpLen(safeStr);
+      } catch (e) {
+        console.error("Ошибка во внешней функции cpLen:", e);
+      }
+    }
+    return safeStr.length;
   }
 
   showUI() {
